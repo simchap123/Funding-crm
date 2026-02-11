@@ -15,32 +15,37 @@ export async function registerUser(formData: {
   password: string;
   confirmPassword: string;
 }) {
-  const validated = registerSchema.safeParse(formData);
-  if (!validated.success) {
-    return { error: validated.error.issues[0].message };
+  try {
+    const validated = registerSchema.safeParse(formData);
+    if (!validated.success) {
+      return { error: validated.error.issues[0].message };
+    }
+
+    const { name, email, password } = validated.data;
+
+    const existingUser = await db.query.users.findFirst({
+      where: eq(users.email, email),
+    });
+
+    if (existingUser) {
+      return { error: "An account with this email already exists" };
+    }
+
+    const passwordHash = await hash(password, 12);
+    const id = nanoid();
+
+    await db.insert(users).values({
+      id,
+      name,
+      email,
+      passwordHash,
+    });
+
+    return { success: true };
+  } catch (err) {
+    console.error("Registration error:", err);
+    return { error: err instanceof Error ? err.message : "Registration failed" };
   }
-
-  const { name, email, password } = validated.data;
-
-  const existingUser = await db.query.users.findFirst({
-    where: eq(users.email, email),
-  });
-
-  if (existingUser) {
-    return { error: "An account with this email already exists" };
-  }
-
-  const passwordHash = await hash(password, 12);
-  const id = nanoid();
-
-  await db.insert(users).values({
-    id,
-    name,
-    email,
-    passwordHash,
-  });
-
-  return { success: true };
 }
 
 export async function loginUser(formData: {
