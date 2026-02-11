@@ -1,0 +1,19 @@
+{
+  "name": "CRM - Contact & Lead Management",
+  "short_name": "CRM",
+  "description": "Modern CRM for managing contacts, loans, documents and leads",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "any",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

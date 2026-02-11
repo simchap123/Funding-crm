@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local database
+local.db
+local.db-shm
+local.db-wal
+
+# misc binaries
+*.exe
+
+# sensitive files
+cookies.txt
