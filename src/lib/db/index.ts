@@ -2,8 +2,16 @@ import { drizzle as drizzleBetterSqlite } from "drizzle-orm/better-sqlite3";
 import { drizzle as drizzleLibsql } from "drizzle-orm/libsql";
 import * as schema from "./schema";
 
-function createDb() {
-  const url = process.env.TURSO_DATABASE_URL!;
+type DbInstance = ReturnType<typeof drizzleBetterSqlite<typeof schema>>;
+
+let _db: DbInstance | null = null;
+
+function createDb(): DbInstance {
+  const url = process.env.TURSO_DATABASE_URL;
+
+  if (!url) {
+    throw new Error("TURSO_DATABASE_URL is not set");
+  }
 
   if (url.startsWith("file:")) {
     // Local development with better-sqlite3
@@ -20,7 +28,14 @@ function createDb() {
     url,
     authToken: process.env.TURSO_AUTH_TOKEN,
   });
-  return drizzleLibsql(client, { schema });
+  return drizzleLibsql(client, { schema }) as unknown as DbInstance;
 }
 
-export const db = createDb() as ReturnType<typeof drizzleBetterSqlite<typeof schema>>;
+export const db = new Proxy({} as DbInstance, {
+  get(_target, prop) {
+    if (!_db) {
+      _db = createDb();
+    }
+    return (_db as any)[prop];
+  },
+});
