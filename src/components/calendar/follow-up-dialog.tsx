@@ -33,18 +33,22 @@ export function FollowUpDialog({
   onOpenChange,
   defaultDate,
   contacts,
+  defaultContactId,
+  lockContact,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultDate: string;
   contacts: Contact[];
+  defaultContactId?: string;
+  lockContact?: boolean;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState("reminder");
   const [dueDate, setDueDate] = useState(defaultDate);
   const [dueTime, setDueTime] = useState("");
-  const [contactId, setContactId] = useState("");
+  const [contactId, setContactId] = useState(defaultContactId || "");
   const [loading, setLoading] = useState(false);
 
   // Reset form when date changes
@@ -55,7 +59,7 @@ export function FollowUpDialog({
       setDescription("");
       setType("reminder");
       setDueTime("");
-      setContactId("");
+      setContactId(defaultContactId || "");
     }
     onOpenChange(open);
   };
@@ -145,18 +149,27 @@ export function FollowUpDialog({
             </div>
             <div>
               <Label>Contact</Label>
-              <Select value={contactId} onValueChange={setContactId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {contacts.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.firstName} {c.lastName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {lockContact ? (
+                <div className="flex h-9 w-full items-center rounded-md border bg-muted px-3 text-sm">
+                  {(() => {
+                    const c = contacts.find((c) => c.id === contactId);
+                    return c ? `${c.firstName} ${c.lastName}` : "Unknown contact";
+                  })()}
+                </div>
+              ) : (
+                <Select value={contactId} onValueChange={setContactId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contacts.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.firstName} {c.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
 

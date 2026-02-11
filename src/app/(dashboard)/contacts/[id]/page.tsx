@@ -3,12 +3,14 @@ import Link from "next/link";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getContactById } from "@/lib/db/queries/contacts";
+import { getFollowUpsByContact } from "@/lib/db/queries/follow-ups";
 import { ContactDetailCard } from "@/components/contacts/contact-detail-card";
 import { NotesSection } from "@/components/contacts/notes-section";
 import { ActivityTimeline } from "@/components/contacts/activity-timeline";
 import { ContactDeleteButton } from "@/components/contacts/contact-delete-button";
 import { ContactLoansSection } from "@/components/contacts/contact-loans-section";
 import { ContactDocumentsSection } from "@/components/contacts/contact-documents-section";
+import { ContactFollowUpsSection } from "@/components/contacts/contact-follow-ups-section";
 import type { ContactWithDetails } from "@/lib/types";
 
 interface ContactDetailPageProps {
@@ -22,7 +24,10 @@ export default async function ContactDetailPage({
 }: ContactDetailPageProps) {
   const { id } = await params;
   const sp = await searchParams;
-  const contact = await getContactById(id);
+  const [contact, followUps] = await Promise.all([
+    getContactById(id),
+    getFollowUpsByContact(id),
+  ]);
 
   if (!contact) {
     notFound();
@@ -90,6 +95,16 @@ export default async function ContactDetailPage({
           <ContactDocumentsSection
             contactId={id}
             documents={(contact as any).documents || []}
+          />
+          <ContactFollowUpsSection
+            contactId={id}
+            contact={{
+              id,
+              firstName: contact.firstName,
+              lastName: contact.lastName,
+              company: contact.company,
+            }}
+            followUps={followUps as any}
           />
           <NotesSection contactId={id} notes={contact.notes} />
         </div>

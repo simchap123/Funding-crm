@@ -27,6 +27,17 @@ export async function getFollowUpsByContact(contactId: string) {
   });
 }
 
+export async function getFollowUpsByLoan(loanId: string) {
+  return db.query.followUps.findMany({
+    where: eq(followUps.loanId, loanId),
+    with: {
+      contact: true,
+      loan: true,
+    },
+    orderBy: [desc(followUps.dueDate)],
+  });
+}
+
 export async function getUpcomingFollowUps(limit = 10) {
   const today = new Date().toISOString().split("T")[0];
   return db.query.followUps.findMany({

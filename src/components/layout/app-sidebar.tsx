@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 import { mainNav } from "@/config/nav";
 import {
   Sidebar,
@@ -14,19 +13,24 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { state } = useSidebar();
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarHeader className="border-b px-6 py-4">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
             C
           </div>
-          <span className="text-lg font-semibold">CRM</span>
+          {state === "expanded" && (
+            <span className="text-lg font-semibold">CRM</span>
+          )}
         </Link>
       </SidebarHeader>
       <SidebarContent>
@@ -38,6 +42,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild
+                    tooltip={item.title}
                     isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
                   >
                     <Link href={item.href}>
@@ -51,6 +56,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarRail />
     </Sidebar>
   );
 }

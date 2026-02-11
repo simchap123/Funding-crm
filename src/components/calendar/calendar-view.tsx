@@ -79,11 +79,13 @@ export function CalendarView({
   contacts,
   currentYear,
   currentMonth,
+  basePath = "/calendar",
 }: {
   followUps: FollowUp[];
   contacts: Contact[];
   currentYear: number;
   currentMonth: number;
+  basePath?: string;
 }) {
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -102,14 +104,14 @@ export function CalendarView({
         ? subMonths(currentDate, 1)
         : addMonths(currentDate, 1);
     router.push(
-      `/calendar?year=${target.getFullYear()}&month=${target.getMonth() + 1}`
+      `${basePath}${basePath.includes("?") ? "&" : "?"}year=${target.getFullYear()}&month=${target.getMonth() + 1}`
     );
   };
 
   const goToToday = () => {
     const now = new Date();
     router.push(
-      `/calendar?year=${now.getFullYear()}&month=${now.getMonth() + 1}`
+      `${basePath}${basePath.includes("?") ? "&" : "?"}year=${now.getFullYear()}&month=${now.getMonth() + 1}`
     );
   };
 

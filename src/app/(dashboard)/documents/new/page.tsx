@@ -34,6 +34,7 @@ export default async function NewDocumentPage({
         loans={allLoans as any}
         defaultContactId={params.contactId}
         defaultLoanId={params.loanId}
+        lockContact={!!params.contactId}
       />
     </div>
   );

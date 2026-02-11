@@ -1,9 +1,9 @@
 import { PageHeader } from "@/components/shared/page-header";
 import { TagsManager } from "@/components/contacts/tags-manager";
-import { getAllTags } from "@/lib/db/queries/tags";
+import { getTagsWithCounts } from "@/lib/db/queries/tags";
 
 export default async function TagsSettingsPage() {
-  const tags = await getAllTags();
+  const tags = await getTagsWithCounts();
 
   return (
     <div className="space-y-6">

@@ -225,6 +225,15 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
               {doc.description && (
                 <CardDescription>{doc.description}</CardDescription>
               )}
+              {doc.recipients.length > 0 && doc.status !== "draft" && (() => {
+                const signers = doc.recipients.filter((r) => r.role === "signer");
+                const signed = signers.filter((r) => r.status === "signed");
+                return signers.length > 0 ? (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {signed.length} of {signers.length} signer{signers.length !== 1 ? "s" : ""} completed
+                  </p>
+                ) : null;
+              })()}
             </div>
             <div className="flex items-center gap-2">
               <DocumentStatusBadge status={doc.status as DocumentStatus} />
@@ -428,6 +437,8 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Viewed</TableHead>
+                  <TableHead>Signed</TableHead>
                   <TableHead>Signing Link</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
@@ -452,6 +463,16 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
                             {r.status}
                           </span>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {r.viewedAt
+                          ? format(new Date(r.viewedAt), "MMM d, h:mm a")
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {r.signedAt
+                          ? format(new Date(r.signedAt), "MMM d, h:mm a")
+                          : "—"}
                       </TableCell>
                       <TableCell>
                         {r.role === "signer" && doc.status !== "draft" && (
@@ -498,9 +519,22 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
             </p>
           ) : (
             <div className="space-y-3">
-              {doc.auditLog.map((entry) => (
+              {doc.auditLog.map((entry) => {
+                const AUDIT_ICONS: Record<string, any> = {
+                  created: FileSignature,
+                  sent: Send,
+                  viewed: Eye,
+                  signed: CheckCircle2,
+                  completed: CheckCircle2,
+                  voided: Ban,
+                  declined: Ban,
+                  recipient_added: UserPlus,
+                };
+                const AuditIcon =
+                  AUDIT_ICONS[entry.action] || Clock;
+                return (
                 <div key={entry.id} className="flex items-center gap-3 text-sm">
-                  <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                  <AuditIcon className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="flex-1">
                     <span className="font-medium capitalize">
                       {entry.action.replace("_", " ")}
@@ -525,7 +559,8 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
                     )}
                   </span>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

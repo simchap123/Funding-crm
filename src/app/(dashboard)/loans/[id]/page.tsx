@@ -1,14 +1,16 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoanDetailCard } from "@/components/loans/loan-detail-card";
 import { LoanConditions } from "@/components/loans/loan-conditions";
 import { LoanActivityTimeline } from "@/components/loans/loan-activity-timeline";
 import { LoanStageSelector } from "@/components/loans/loan-stage-selector";
+import { LoanFollowUpsSection } from "@/components/loans/loan-follow-ups-section";
 import { ContactDocumentsSection } from "@/components/contacts/contact-documents-section";
 import { getLoanById } from "@/lib/db/queries/loans";
+import { getFollowUpsByLoan } from "@/lib/db/queries/follow-ups";
 import { LOAN_TYPE_LABELS } from "@/lib/constants";
 import type { LoanType } from "@/lib/db/schema/loans";
 
@@ -21,6 +23,8 @@ export default async function LoanDetailPage({ params }: LoanDetailPageProps) {
   const loan = await getLoanById(id);
 
   if (!loan) return notFound();
+
+  const followUps = await getFollowUpsByLoan(id);
 
   const loanDocs = (loan.documents || []).map((d: any) => ({
     id: d.id,
@@ -45,6 +49,12 @@ export default async function LoanDetailPage({ params }: LoanDetailPageProps) {
         }
       >
         <div className="flex gap-2">
+          <Link href={`/contacts/${loan.contactId}`}>
+            <Button variant="outline" size="sm">
+              <User className="mr-2 h-4 w-4" />
+              View Contact
+            </Button>
+          </Link>
           <Link href={`/documents/new?loanId=${loan.id}&contactId=${loan.contactId}`}>
             <Button variant="outline" size="sm">
               <Plus className="mr-2 h-4 w-4" />
@@ -72,6 +82,15 @@ export default async function LoanDetailPage({ params }: LoanDetailPageProps) {
           <ContactDocumentsSection
             contactId={loan.contactId}
             documents={loanDocs}
+          />
+          <LoanFollowUpsSection
+            contact={{
+              id: loan.contactId,
+              firstName: loan.contact.firstName,
+              lastName: loan.contact.lastName,
+              company: null,
+            }}
+            followUps={followUps as any}
           />
           <LoanConditions
             loanId={loan.id}

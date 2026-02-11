@@ -23,6 +23,7 @@ export default async function NewLoanPage({ searchParams }: NewLoanPageProps) {
       <LoanForm
         contacts={allContacts}
         defaultContactId={params.contactId}
+        lockContact={!!params.contactId}
       />
     </div>
   );

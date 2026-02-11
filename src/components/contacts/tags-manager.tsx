@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,8 +32,10 @@ const PRESET_COLORS = [
   "#64748b",
 ];
 
+type TagWithCount = Tag & { contactCount?: number };
+
 interface TagsManagerProps {
-  tags: Tag[];
+  tags: TagWithCount[];
 }
 
 export function TagsManager({ tags }: TagsManagerProps) {
@@ -44,6 +46,13 @@ export function TagsManager({ tags }: TagsManagerProps) {
   const [name, setName] = useState("");
   const [color, setColor] = useState("#6366f1");
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filteredTags = useMemo(() => {
+    if (!search.trim()) return tags;
+    const q = search.toLowerCase();
+    return tags.filter((t) => t.name.toLowerCase().includes(q));
+  }, [tags, search]);
 
   const openCreate = () => {
     setEditingTag(null);
@@ -88,14 +97,23 @@ export function TagsManager({ tags }: TagsManagerProps) {
     <>
       <Card>
         <CardContent className="p-6">
-          <div className="flex justify-end mb-4">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search tags..."
+                className="pl-9"
+              />
+            </div>
             <Button onClick={openCreate}>
               <Plus className="mr-2 h-4 w-4" />
               New Tag
             </Button>
           </div>
           <div className="space-y-2">
-            {tags.map((tag) => (
+            {filteredTags.map((tag) => (
               <div
                 key={tag.id}
                 className="flex items-center justify-between rounded-lg border p-3"
@@ -111,6 +129,9 @@ export function TagsManager({ tags }: TagsManagerProps) {
                   >
                     {tag.name}
                   </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {tag.contactCount ?? 0} contact{(tag.contactCount ?? 0) !== 1 ? "s" : ""}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button
@@ -135,6 +156,11 @@ export function TagsManager({ tags }: TagsManagerProps) {
                 </div>
               </div>
             ))}
+            {filteredTags.length === 0 && tags.length > 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No tags match your search.
+              </p>
+            )}
             {tags.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-8">
                 No tags yet. Create your first tag to start organizing contacts.

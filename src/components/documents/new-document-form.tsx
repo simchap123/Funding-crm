@@ -36,11 +36,13 @@ export function NewDocumentForm({
   loans,
   defaultContactId,
   defaultLoanId,
+  lockContact,
 }: {
   contacts: Contact[];
   loans: Loan[];
   defaultContactId?: string;
   defaultLoanId?: string;
+  lockContact?: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -128,19 +130,30 @@ export function NewDocumentForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Contact</Label>
-              <Select value={contactId} onValueChange={handleContactChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a contact..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {contacts.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.firstName} {c.lastName}
-                      {c.company ? ` — ${c.company}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {lockContact ? (
+                <div className="flex h-9 w-full items-center rounded-md border bg-muted px-3 text-sm">
+                  {(() => {
+                    const c = contacts.find((c) => c.id === contactId);
+                    return c
+                      ? `${c.firstName} ${c.lastName}${c.company ? ` — ${c.company}` : ""}`
+                      : "Unknown contact";
+                  })()}
+                </div>
+              ) : (
+                <Select value={contactId} onValueChange={handleContactChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a contact..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contacts.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.firstName} {c.lastName}
+                        {c.company ? ` — ${c.company}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div>
               <Label>Loan</Label>

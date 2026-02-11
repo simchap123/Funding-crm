@@ -39,6 +39,8 @@ export async function createFollowUp(data: {
   });
 
   revalidatePath("/calendar");
+  revalidatePath("/pipeline");
+  if (data.contactId) revalidatePath(`/contacts/${data.contactId}`);
   return { success: true, id };
 }
 
@@ -77,6 +79,11 @@ export async function updateFollowUp(
   await db.update(followUps).set(updates).where(eq(followUps.id, id));
 
   revalidatePath("/calendar");
+  revalidatePath("/pipeline");
+  if (data.contactId) revalidatePath(`/contacts/${data.contactId}`);
+  // Also revalidate by looking up the follow-up's current contact
+  const fu = await db.query.followUps.findFirst({ where: eq(followUps.id, id) });
+  if (fu?.contactId) revalidatePath(`/contacts/${fu.contactId}`);
   return { success: true };
 }
 
@@ -92,6 +99,9 @@ export async function rescheduleFollowUp(id: string, newDate: string) {
     .where(eq(followUps.id, id));
 
   revalidatePath("/calendar");
+  revalidatePath("/pipeline");
+  const fu = await db.query.followUps.findFirst({ where: eq(followUps.id, id) });
+  if (fu?.contactId) revalidatePath(`/contacts/${fu.contactId}`);
   return { success: true };
 }
 
@@ -101,7 +111,10 @@ export async function completeFollowUp(id: string) {
 
 export async function deleteFollowUp(id: string) {
   await getCurrentUserId();
+  const fu = await db.query.followUps.findFirst({ where: eq(followUps.id, id) });
   await db.delete(followUps).where(eq(followUps.id, id));
   revalidatePath("/calendar");
+  revalidatePath("/pipeline");
+  if (fu?.contactId) revalidatePath(`/contacts/${fu.contactId}`);
   return { success: true };
 }

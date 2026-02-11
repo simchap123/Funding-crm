@@ -37,9 +37,10 @@ interface LoanFormProps {
   loan?: Loan;
   contacts: Contact[];
   defaultContactId?: string;
+  lockContact?: boolean;
 }
 
-export function LoanForm({ loan, contacts, defaultContactId }: LoanFormProps) {
+export function LoanForm({ loan, contacts, defaultContactId, lockContact }: LoanFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const isEditing = !!loan;
@@ -110,24 +111,35 @@ export function LoanForm({ loan, contacts, defaultContactId }: LoanFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Borrower *</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select borrower" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {contacts.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.firstName} {c.lastName}{" "}
-                          {c.company ? `(${c.company})` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {lockContact ? (
+                    <div className="flex h-9 w-full items-center rounded-md border bg-muted px-3 text-sm">
+                      {(() => {
+                        const c = contacts.find((c) => c.id === field.value);
+                        return c
+                          ? `${c.firstName} ${c.lastName}${c.company ? ` (${c.company})` : ""}`
+                          : "Unknown contact";
+                      })()}
+                    </div>
+                  ) : (
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select borrower" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {contacts.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.firstName} {c.lastName}{" "}
+                            {c.company ? `(${c.company})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
