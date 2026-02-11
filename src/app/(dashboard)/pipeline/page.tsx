@@ -53,12 +53,13 @@ export default async function PipelinePage({
 
     return (
       <div className="space-y-6">
-        <PageHeader
-          title="Workspace"
-          description="Schedule and track follow-ups with prospects"
-        >
+        <div className="flex items-center gap-4">
+          <PageHeader
+            title="Workspace"
+            description="Schedule and track follow-ups with prospects"
+          />
           <WorkspaceToggle />
-        </PageHeader>
+        </div>
         <CalendarView
           followUps={followUps as any}
           contacts={allContacts}
@@ -74,12 +75,13 @@ export default async function PipelinePage({
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Workspace"
-        description="Drag and drop contacts between stages"
-      >
+      <div className="flex items-center gap-4">
+        <PageHeader
+          title="Workspace"
+          description="Drag and drop contacts between stages"
+        />
         <WorkspaceToggle />
-      </PageHeader>
+      </div>
       <KanbanBoard initialData={data} />
     </div>
   );
