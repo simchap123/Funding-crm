@@ -18,7 +18,7 @@ export const emailAccounts = sqliteTable("email_accounts", {
   smtpHost: text("smtp_host"),
   smtpPort: integer("smtp_port"),
   smtpSecure: integer("smtp_secure", { mode: "boolean" }).default(true),
-  // Auth (encrypted in production)
+  // Auth — encrypted with AES-256-GCM via lib/crypto.ts
   password: text("password"),
   // Sync status
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),

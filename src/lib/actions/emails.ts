@@ -11,6 +11,7 @@ import {
   activities,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
+import { encrypt, decrypt } from "@/lib/crypto";
 import type {
   EmailAccountFormValues,
   ComposeEmailFormValues,
@@ -45,7 +46,7 @@ export async function createEmailAccount(data: EmailAccountFormValues) {
     smtpHost: validated.data.smtpHost,
     smtpPort: validated.data.smtpPort,
     smtpSecure: validated.data.smtpSecure,
-    password: validated.data.password, // In production, encrypt this
+    password: encrypt(validated.data.password),
   });
 
   revalidatePath("/settings/email");

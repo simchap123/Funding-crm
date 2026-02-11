@@ -1,4 +1,3 @@
-import { PageHeader } from "@/components/shared/page-header";
 import { KanbanBoard } from "@/components/pipeline/kanban-board";
 import { WorkspaceToggle } from "@/components/pipeline/workspace-toggle";
 import { CalendarView } from "@/components/calendar/calendar-view";
@@ -53,13 +52,7 @@ export default async function PipelinePage({
 
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <PageHeader
-            title="Workspace"
-            description="Schedule and track follow-ups with prospects"
-          />
-          <WorkspaceToggle />
-        </div>
+        <WorkspaceToggle />
         <CalendarView
           followUps={followUps as any}
           contacts={allContacts}
@@ -74,14 +67,8 @@ export default async function PipelinePage({
   const data = await getContactsByStage();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <PageHeader
-          title="Workspace"
-          description="Drag and drop contacts between stages"
-        />
-        <WorkspaceToggle />
-      </div>
+    <div className="space-y-4">
+      <WorkspaceToggle />
       <KanbanBoard initialData={data} />
     </div>
   );
