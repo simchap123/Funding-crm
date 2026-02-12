@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +49,6 @@ export function EmailAccountForm({
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [imapHost, setImapHost] = useState("");
@@ -121,7 +120,6 @@ export function EmailAccountForm({
       setSmtpHost("");
       setPassword("");
       setDetectedProvider("");
-      setShowAdvanced(false);
     } catch {
       toast.error("Failed to connect account");
     } finally {
@@ -178,15 +176,7 @@ export function EmailAccountForm({
                   placeholder="App-specific password"
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                Server settings {detectedProvider ? "(auto-detected)" : ""}
-              </button>
-              {showAdvanced && (
+              {!detectedProvider && email.includes("@") && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -194,7 +184,7 @@ export function EmailAccountForm({
                       <Input
                         value={imapHost}
                         onChange={(e) => setImapHost(e.target.value)}
-                        placeholder="imap.gmail.com"
+                        placeholder="imap.example.com"
                       />
                     </div>
                     <div>
@@ -212,7 +202,7 @@ export function EmailAccountForm({
                       <Input
                         value={smtpHost}
                         onChange={(e) => setSmtpHost(e.target.value)}
-                        placeholder="smtp.gmail.com"
+                        placeholder="smtp.example.com"
                       />
                     </div>
                     <div>
