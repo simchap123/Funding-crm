@@ -50,3 +50,5 @@ local.db-wal
 
 # sensitive files
 cookies.txt
+
+.vercel
