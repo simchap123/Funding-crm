@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,7 +59,7 @@ export function EmailAccountForm({
   const [password, setPassword] = useState("");
   const [detectedProvider, setDetectedProvider] = useState("");
 
-  const handleEmailChange = useCallback((value: string) => {
+  function handleEmailChange(value: string) {
     setEmail(value);
     const domain = value.split("@")[1]?.toLowerCase();
     if (domain && KNOWN_PROVIDERS[domain]) {
@@ -69,22 +69,41 @@ export function EmailAccountForm({
       setSmtpHost(p.smtpHost);
       setSmtpPort(String(p.smtpPort));
       setDetectedProvider(domain);
-    } else if (detectedProvider) {
+    } else {
       setDetectedProvider("");
     }
-  }, [detectedProvider]);
+  }
 
   const handleSubmit = async () => {
+    // Auto-fill server settings at submit time if still empty
+    let finalImapHost = imapHost;
+    let finalImapPort = imapPort;
+    let finalSmtpHost = smtpHost;
+    let finalSmtpPort = smtpPort;
+    const domain = email.split("@")[1]?.toLowerCase();
+    if (domain && KNOWN_PROVIDERS[domain]) {
+      const p = KNOWN_PROVIDERS[domain];
+      if (!finalImapHost) finalImapHost = p.imapHost;
+      if (!finalImapPort) finalImapPort = String(p.imapPort);
+      if (!finalSmtpHost) finalSmtpHost = p.smtpHost;
+      if (!finalSmtpPort) finalSmtpPort = String(p.smtpPort);
+      // Also update state so UI reflects it
+      setImapHost(finalImapHost);
+      setImapPort(finalImapPort);
+      setSmtpHost(finalSmtpHost);
+      setSmtpPort(finalSmtpPort);
+    }
+
     setLoading(true);
     try {
       const result = await createEmailAccount({
         email,
         name: name || undefined,
-        imapHost,
-        imapPort: Number(imapPort),
+        imapHost: finalImapHost,
+        imapPort: Number(finalImapPort),
         imapSecure: true,
-        smtpHost,
-        smtpPort: Number(smtpPort),
+        smtpHost: finalSmtpHost,
+        smtpPort: Number(finalSmtpPort),
         smtpSecure: true,
         password,
       });
