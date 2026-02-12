@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,27 @@ import {
 } from "@/lib/actions/emails";
 import type { EmailAccount } from "@/lib/types";
 
+const KNOWN_PROVIDERS: Record<
+  string,
+  { imapHost: string; imapPort: number; smtpHost: string; smtpPort: number }
+> = {
+  "gmail.com": { imapHost: "imap.gmail.com", imapPort: 993, smtpHost: "smtp.gmail.com", smtpPort: 587 },
+  "googlemail.com": { imapHost: "imap.gmail.com", imapPort: 993, smtpHost: "smtp.gmail.com", smtpPort: 587 },
+  "outlook.com": { imapHost: "outlook.office365.com", imapPort: 993, smtpHost: "smtp.office365.com", smtpPort: 587 },
+  "hotmail.com": { imapHost: "outlook.office365.com", imapPort: 993, smtpHost: "smtp.office365.com", smtpPort: 587 },
+  "live.com": { imapHost: "outlook.office365.com", imapPort: 993, smtpHost: "smtp.office365.com", smtpPort: 587 },
+  "msn.com": { imapHost: "outlook.office365.com", imapPort: 993, smtpHost: "smtp.office365.com", smtpPort: 587 },
+  "yahoo.com": { imapHost: "imap.mail.yahoo.com", imapPort: 993, smtpHost: "smtp.mail.yahoo.com", smtpPort: 587 },
+  "yahoo.co.uk": { imapHost: "imap.mail.yahoo.com", imapPort: 993, smtpHost: "smtp.mail.yahoo.com", smtpPort: 587 },
+  "aol.com": { imapHost: "imap.aol.com", imapPort: 993, smtpHost: "smtp.aol.com", smtpPort: 587 },
+  "icloud.com": { imapHost: "imap.mail.me.com", imapPort: 993, smtpHost: "smtp.mail.me.com", smtpPort: 587 },
+  "me.com": { imapHost: "imap.mail.me.com", imapPort: 993, smtpHost: "smtp.mail.me.com", smtpPort: 587 },
+  "mac.com": { imapHost: "imap.mail.me.com", imapPort: 993, smtpHost: "smtp.mail.me.com", smtpPort: 587 },
+  "zoho.com": { imapHost: "imap.zoho.com", imapPort: 993, smtpHost: "smtp.zoho.com", smtpPort: 587 },
+  "protonmail.com": { imapHost: "127.0.0.1", imapPort: 1143, smtpHost: "127.0.0.1", smtpPort: 1025 },
+  "pm.me": { imapHost: "127.0.0.1", imapPort: 1143, smtpHost: "127.0.0.1", smtpPort: 1025 },
+};
+
 export function EmailAccountForm({
   accounts,
 }: {
@@ -28,6 +49,7 @@ export function EmailAccountForm({
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [imapHost, setImapHost] = useState("");
@@ -35,6 +57,22 @@ export function EmailAccountForm({
   const [smtpHost, setSmtpHost] = useState("");
   const [smtpPort, setSmtpPort] = useState("587");
   const [password, setPassword] = useState("");
+  const [detectedProvider, setDetectedProvider] = useState("");
+
+  const handleEmailChange = useCallback((value: string) => {
+    setEmail(value);
+    const domain = value.split("@")[1]?.toLowerCase();
+    if (domain && KNOWN_PROVIDERS[domain]) {
+      const p = KNOWN_PROVIDERS[domain];
+      setImapHost(p.imapHost);
+      setImapPort(String(p.imapPort));
+      setSmtpHost(p.smtpHost);
+      setSmtpPort(String(p.smtpPort));
+      setDetectedProvider(domain);
+    } else if (detectedProvider) {
+      setDetectedProvider("");
+    }
+  }, [detectedProvider]);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -63,6 +101,8 @@ export function EmailAccountForm({
       setImapHost("");
       setSmtpHost("");
       setPassword("");
+      setDetectedProvider("");
+      setShowAdvanced(false);
     } catch {
       toast.error("Failed to connect account");
     } finally {
@@ -93,9 +133,14 @@ export function EmailAccountForm({
                 <Input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => handleEmailChange(e.target.value)}
                   placeholder="you@example.com"
                 />
+                {detectedProvider && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Server settings auto-detected for {detectedProvider}
+                  </p>
+                )}
               </div>
               <div>
                 <Label>Display Name</Label>
@@ -104,42 +149,6 @@ export function EmailAccountForm({
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your Name"
                 />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>IMAP Host *</Label>
-                  <Input
-                    value={imapHost}
-                    onChange={(e) => setImapHost(e.target.value)}
-                    placeholder="imap.gmail.com"
-                  />
-                </div>
-                <div>
-                  <Label>IMAP Port</Label>
-                  <Input
-                    value={imapPort}
-                    onChange={(e) => setImapPort(e.target.value)}
-                    placeholder="993"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>SMTP Host *</Label>
-                  <Input
-                    value={smtpHost}
-                    onChange={(e) => setSmtpHost(e.target.value)}
-                    placeholder="smtp.gmail.com"
-                  />
-                </div>
-                <div>
-                  <Label>SMTP Port</Label>
-                  <Input
-                    value={smtpPort}
-                    onChange={(e) => setSmtpPort(e.target.value)}
-                    placeholder="587"
-                  />
-                </div>
               </div>
               <div>
                 <Label>Password / App Password *</Label>
@@ -150,6 +159,54 @@ export function EmailAccountForm({
                   placeholder="App-specific password"
                 />
               </div>
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                Server settings {detectedProvider ? "(auto-detected)" : ""}
+              </button>
+              {showAdvanced && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>IMAP Host *</Label>
+                      <Input
+                        value={imapHost}
+                        onChange={(e) => setImapHost(e.target.value)}
+                        placeholder="imap.gmail.com"
+                      />
+                    </div>
+                    <div>
+                      <Label>IMAP Port</Label>
+                      <Input
+                        value={imapPort}
+                        onChange={(e) => setImapPort(e.target.value)}
+                        placeholder="993"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>SMTP Host *</Label>
+                      <Input
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
+                        placeholder="smtp.gmail.com"
+                      />
+                    </div>
+                    <div>
+                      <Label>SMTP Port</Label>
+                      <Input
+                        value={smtpPort}
+                        onChange={(e) => setSmtpPort(e.target.value)}
+                        placeholder="587"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
               <Button onClick={handleSubmit} disabled={loading} className="w-full">
                 {loading ? "Connecting..." : "Connect Account"}
               </Button>
