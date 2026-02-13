@@ -176,7 +176,7 @@ export function EmailAccountForm({
                   placeholder="App-specific password"
                 />
               </div>
-              {!detectedProvider && email.includes("@") && (
+              {!detectedProvider && email.includes("@") && email.split("@")[1]?.includes(".") && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
