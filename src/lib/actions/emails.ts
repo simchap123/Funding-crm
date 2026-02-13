@@ -12,6 +12,7 @@ import {
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { encrypt, decrypt } from "@/lib/crypto";
+import { sendEmailViaSMTP } from "@/lib/email/smtp-send";
 import type {
   EmailAccountFormValues,
   ComposeEmailFormValues,
@@ -83,40 +84,64 @@ export async function composeEmail(data: ComposeEmailFormValues) {
     .map((e) => e.trim())
     .filter(Boolean);
 
+  const ccList = validated.data.cc
+    ? validated.data.cc
+        .split(",")
+        .map((e) => e.trim())
+        .filter(Boolean)
+    : [];
+
+  const bccList = validated.data.bcc
+    ? validated.data.bcc
+        .split(",")
+        .map((e) => e.trim())
+        .filter(Boolean)
+    : [];
+
+  const bodyText = validated.data.bodyHtml.replace(/<[^>]*>/g, "");
+
+  // Actually send via SMTP
+  let smtpMessageId: string | null = null;
+  let status: "sent" | "failed" = "sent";
+  try {
+    const result = await sendEmailViaSMTP(account, {
+      to: toList,
+      cc: ccList.length ? ccList : undefined,
+      bcc: bccList.length ? bccList : undefined,
+      subject: validated.data.subject,
+      html: validated.data.bodyHtml,
+      text: bodyText,
+    });
+    smtpMessageId = result.messageId;
+  } catch (err) {
+    status = "failed";
+    console.error("[CRM] SMTP send failed:", err);
+    return {
+      error: `Failed to send: ${err instanceof Error ? err.message : "SMTP error"}`,
+    };
+  }
+
   const id = nanoid();
-  const messageId = `<${id}@crm.local>`;
 
   await db.insert(emails).values({
     id,
     accountId: account.id,
-    messageId,
+    messageId: smtpMessageId || `<${id}@crm.local>`,
     direction: "outbound",
-    status: "sent", // In production, queue and send via SMTP
+    status,
     fromEmail: account.email,
     fromName: account.name || undefined,
     toEmails: JSON.stringify(toList.map((e) => ({ email: e }))),
-    ccEmails: validated.data.cc
-      ? JSON.stringify(
-          validated.data.cc
-            .split(",")
-            .map((e) => e.trim())
-            .filter(Boolean)
-            .map((e) => ({ email: e }))
-        )
+    ccEmails: ccList.length
+      ? JSON.stringify(ccList.map((e) => ({ email: e })))
       : null,
-    bccEmails: validated.data.bcc
-      ? JSON.stringify(
-          validated.data.bcc
-            .split(",")
-            .map((e) => e.trim())
-            .filter(Boolean)
-            .map((e) => ({ email: e }))
-        )
+    bccEmails: bccList.length
+      ? JSON.stringify(bccList.map((e) => ({ email: e })))
       : null,
     subject: validated.data.subject,
     bodyHtml: validated.data.bodyHtml,
-    bodyText: validated.data.bodyHtml.replace(/<[^>]*>/g, ""),
-    snippet: validated.data.bodyHtml.replace(/<[^>]*>/g, "").slice(0, 200),
+    bodyText,
+    snippet: bodyText.slice(0, 200),
     isRead: true,
     contactId: validated.data.contactId || null,
     userId,
@@ -190,6 +215,70 @@ export async function deleteEmail(emailId: string) {
 
   revalidatePath("/inbox");
   return { success: true };
+}
+
+export async function createContactFromEmail(emailId: string) {
+  const userId = await getCurrentUserId();
+
+  const email = await db.query.emails.findFirst({
+    where: eq(emails.id, emailId),
+  });
+  if (!email) return { error: "Email not found" };
+  if (email.contactId) return { error: "Email already linked to a contact" };
+
+  const senderEmail = email.fromEmail;
+  if (!senderEmail) return { error: "No sender email" };
+
+  // Check if contact already exists with this email
+  const existing = await db.query.contacts.findFirst({
+    where: eq(contacts.email, senderEmail),
+  });
+  if (existing) {
+    // Link this and all emails from this sender
+    await db
+      .update(emails)
+      .set({ contactId: existing.id })
+      .where(eq(emails.fromEmail, senderEmail));
+
+    revalidatePath("/inbox");
+    revalidatePath("/contacts");
+    return { success: true, contactId: existing.id, existed: true };
+  }
+
+  // Create new contact
+  const contactId = nanoid();
+  const nameParts = (email.fromName || senderEmail.split("@")[0]).split(" ");
+  const firstName = nameParts[0] || "Unknown";
+  const lastName = nameParts.slice(1).join(" ") || "";
+
+  await db.insert(contacts).values({
+    id: contactId,
+    firstName,
+    lastName,
+    email: senderEmail,
+    source: "email_campaign",
+    stage: "new",
+    ownerId: userId,
+  });
+
+  // Link all emails from this sender to the new contact
+  await db
+    .update(emails)
+    .set({ contactId })
+    .where(eq(emails.fromEmail, senderEmail));
+
+  await db.insert(activities).values({
+    id: nanoid(),
+    contactId,
+    type: "contact_created",
+    description: `Contact created from email: ${email.subject || "(no subject)"}`,
+    userId,
+  });
+
+  revalidatePath("/inbox");
+  revalidatePath("/contacts");
+  revalidatePath("/dashboard");
+  return { success: true, contactId, existed: false };
 }
 
 // Simulate receiving an email (in production this would be IMAP sync)

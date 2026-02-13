@@ -13,10 +13,11 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuBadge,
   SidebarRail,
 } from "@/components/ui/sidebar";
 
-export function AppSidebar() {
+export function AppSidebar({ unreadCount = 0 }: { unreadCount?: number }) {
   const pathname = usePathname();
 
   return (
@@ -52,6 +53,11 @@ export function AppSidebar() {
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
+                  {item.href === "/inbox" && unreadCount > 0 && (
+                    <SidebarMenuBadge className="bg-destructive text-destructive-foreground text-xs min-w-5 h-5 flex items-center justify-center rounded-full">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </SidebarMenuBadge>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

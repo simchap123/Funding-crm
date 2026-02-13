@@ -92,3 +92,13 @@ export type EmailWithAttachments = Email & {
   attachments: EmailAttachment[];
   contact: Contact | null;
 };
+
+export type EmailWithContactDetails = Email & {
+  attachments: EmailAttachment[];
+  account: EmailAccount;
+  contact:
+    | (Contact & {
+        contactTags: { tag: Tag }[];
+      })
+    | null;
+};

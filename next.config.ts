@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
     "@libsql/hrana-client",
     "@libsql/isomorphic-ws",
     "@libsql/win32-x64-msvc",
+    "imapflow",
+    "nodemailer",
   ],
 };
 
