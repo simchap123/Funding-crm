@@ -1,9 +1,15 @@
 import Link from "next/link";
-import { Tags, Mail, Settings } from "lucide-react";
+import { Tags, Mail, Shield } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 const settingsSections = [
+  {
+    title: "Account",
+    description: "Change password and manage team members",
+    href: "/settings/account",
+    icon: Shield,
+  },
   {
     title: "Tags",
     description: "Manage tags to organize your contacts",

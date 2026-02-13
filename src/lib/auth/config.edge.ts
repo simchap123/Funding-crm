@@ -20,7 +20,7 @@ export const authConfigBase = {
     },
     authorized({ auth, request: { nextUrl } }: any) {
       const isLoggedIn = !!auth?.user;
-      const isPublic = ["/login", "/register"].some((p) =>
+      const isPublic = ["/login"].some((p) =>
         nextUrl.pathname.startsWith(p)
       );
       if (!isLoggedIn && !isPublic) return false;

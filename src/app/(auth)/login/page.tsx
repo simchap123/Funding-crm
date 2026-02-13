@@ -101,32 +101,6 @@ function LoginForm() {
             </Button>
           </form>
         </Form>
-        <div className="relative my-4">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">or</span>
-          </div>
-        </div>
-        <Button
-          variant="outline"
-          className="w-full"
-          disabled={loading}
-          onClick={() => {
-            form.setValue("email", "admin@example.com");
-            form.setValue("password", "password123");
-            form.handleSubmit(onSubmit)();
-          }}
-        >
-          Sign in as Admin
-        </Button>
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-primary hover:underline">
-            Sign up
-          </Link>
-        </p>
       </CardContent>
     </Card>
   );

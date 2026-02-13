@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { registerSchema, type RegisterInput } from "@/lib/validators/auth";
-import { registerUser } from "@/lib/actions/auth";
+import { z } from "zod";
+import { toast } from "sonner";
+import { createUser } from "@/lib/actions/auth";
 import {
   Card,
   CardContent,
@@ -22,31 +21,50 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-export default function RegisterPage() {
-  const router = useRouter();
-  const [error, setError] = useState("");
+const inviteSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  role: z.enum(["admin", "user"]),
+});
+
+type InviteInput = z.infer<typeof inviteSchema>;
+
+export function InviteUserForm() {
   const [loading, setLoading] = useState(false);
 
-  const form = useForm<RegisterInput>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
+  const form = useForm<InviteInput>({
+    resolver: zodResolver(inviteSchema) as any,
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      role: "user",
+    },
   });
 
-  async function onSubmit(data: RegisterInput) {
-    setError("");
+  async function onSubmit(data: InviteInput) {
     setLoading(true);
     try {
-      const result = await registerUser(data);
-      if (result.error) {
-        setError(result.error);
+      const result = await createUser(data);
+      if (result?.error) {
+        toast.error(result.error as string);
       } else {
-        router.push("/login?registered=true");
+        toast.success(`User ${data.email} created successfully`);
+        form.reset();
       }
     } catch {
-      setError("Something went wrong");
+      toast.error("Failed to create user");
     } finally {
       setLoading(false);
     }
@@ -54,24 +72,21 @@ export default function RegisterPage() {
 
   return (
     <Card>
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Create an account</CardTitle>
-        <CardDescription>Get started with your CRM</CardDescription>
+      <CardHeader>
+        <CardTitle>Add User</CardTitle>
+        <CardDescription>
+          Create a new CRM user account
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {error && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                {error}
-              </div>
-            )}
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
+                  <FormLabel>Full Name</FormLabel>
                   <FormControl>
                     <Input placeholder="John Doe" {...field} />
                   </FormControl>
@@ -86,11 +101,7 @@ export default function RegisterPage() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="you@example.com"
-                      {...field}
-                    />
+                    <Input type="email" placeholder="user@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -101,7 +112,7 @@ export default function RegisterPage() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>Initial Password</FormLabel>
                   <FormControl>
                     <Input type="password" placeholder="********" {...field} />
                   </FormControl>
@@ -111,28 +122,30 @@ export default function RegisterPage() {
             />
             <FormField
               control={form.control}
-              name="confirmPassword"
+              name="role"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="********" {...field} />
-                  </FormControl>
+                  <FormLabel>Role</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Creating account..." : "Create account"}
+            <Button type="submit" disabled={loading}>
+              {loading ? "Creating..." : "Create User"}
             </Button>
           </form>
         </Form>
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link href="/login" className="text-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
       </CardContent>
     </Card>
   );
