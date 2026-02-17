@@ -1,18 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import { format, isToday, isYesterday, isThisYear } from "date-fns";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Mail,
   Star,
-  StarOff,
   Archive,
   Trash2,
-  ArrowDownLeft,
   ArrowUpRight,
   UserPlus,
+  Search,
+  X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +74,8 @@ function getInitial(name: string) {
 
 export function InboxList({ emails }: { emails: EmailItem[] }) {
   const router = useRouter();
+  const [search, setSearch] = useState("");
+  const [dirFilter, setDirFilter] = useState<"all" | "inbound" | "outbound">("all");
 
   const handleStar = async (e: React.MouseEvent, id: string, starred: boolean) => {
     e.preventDefault();
@@ -105,6 +109,19 @@ export function InboxList({ emails }: { emails: EmailItem[] }) {
     router.refresh();
   };
 
+  const q = search.toLowerCase();
+  const filtered = emails.filter((email) => {
+    if (dirFilter !== "all" && email.direction !== dirFilter) return false;
+    if (!q) return true;
+    const name = email.fromName || email.fromEmail;
+    return (
+      name.toLowerCase().includes(q) ||
+      email.fromEmail.toLowerCase().includes(q) ||
+      (email.subject || "").toLowerCase().includes(q) ||
+      (email.snippet || "").toLowerCase().includes(q)
+    );
+  });
+
   if (emails.length === 0) {
     return (
       <Card>
@@ -120,8 +137,54 @@ export function InboxList({ emails }: { emails: EmailItem[] }) {
   }
 
   return (
-    <div className="border rounded-lg divide-y overflow-hidden bg-card">
-      {emails.map((email) => {
+    <div className="space-y-3">
+      {/* Search + filter bar */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search emails..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8 h-8 text-sm"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center rounded-md border text-xs overflow-hidden shrink-0">
+          {(["all", "inbound", "outbound"] as const).map((d) => (
+            <button
+              key={d}
+              onClick={() => setDirFilter(d)}
+              className={cn(
+                "px-2.5 py-1.5 capitalize transition-colors",
+                dirFilter === d
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted text-muted-foreground"
+              )}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-8">
+            <p className="text-sm text-muted-foreground">No emails match your search</p>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <div className="border rounded-lg divide-y overflow-hidden bg-card">
+      {filtered.map((email) => {
         const isInbound = email.direction === "inbound";
         const displayName = isInbound
           ? email.fromName || email.fromEmail.split("@")[0]
@@ -259,6 +322,7 @@ export function InboxList({ emails }: { emails: EmailItem[] }) {
           </Link>
         );
       })}
+      </div>
     </div>
   );
 }

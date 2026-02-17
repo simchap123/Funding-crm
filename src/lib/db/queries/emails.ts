@@ -9,6 +9,12 @@ export async function getEmailAccounts(userId: string) {
   });
 }
 
+export async function getAllEmailAccounts() {
+  return db.query.emailAccounts.findMany({
+    orderBy: [desc(emailAccounts.createdAt)],
+  });
+}
+
 export async function getEmails({
   accountId,
   direction,

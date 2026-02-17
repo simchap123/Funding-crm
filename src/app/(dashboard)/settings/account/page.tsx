@@ -2,12 +2,17 @@ import { auth } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/page-header";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { InviteUserForm } from "@/components/settings/invite-user-form";
+import { UserManagement } from "@/components/settings/user-management";
+import { getUsers } from "@/lib/actions/auth";
 
 export default async function AccountSettingsPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
   const isAdmin = (session.user as any).role === "admin";
+
+  const usersResult = isAdmin ? await getUsers() : null;
+  const userList = (usersResult && "users" in usersResult ? usersResult.users : []) ?? [];
 
   return (
     <div className="space-y-6">
@@ -19,6 +24,12 @@ export default async function AccountSettingsPage() {
         <ChangePasswordForm />
         {isAdmin && <InviteUserForm />}
       </div>
+      {isAdmin && userList.length > 0 && (
+        <UserManagement
+          users={userList as any}
+          currentUserId={session.user.id}
+        />
+      )}
     </div>
   );
 }

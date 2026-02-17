@@ -20,11 +20,11 @@ export const authConfigBase = {
     },
     authorized({ auth, request: { nextUrl } }: any) {
       const isLoggedIn = !!auth?.user;
-      const isPublic = ["/login"].some((p) =>
+      const isPublic = ["/login", "/api/auth", "/sign"].some((p) =>
         nextUrl.pathname.startsWith(p)
       );
       if (!isLoggedIn && !isPublic) return false;
-      if (isLoggedIn && isPublic) {
+      if (isLoggedIn && nextUrl.pathname === "/login") {
         return Response.redirect(new URL("/dashboard", nextUrl));
       }
       return true;
