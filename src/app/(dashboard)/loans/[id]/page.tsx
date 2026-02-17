@@ -9,8 +9,12 @@ import { LoanActivityTimeline } from "@/components/loans/loan-activity-timeline"
 import { LoanStageSelector } from "@/components/loans/loan-stage-selector";
 import { LoanFollowUpsSection } from "@/components/loans/loan-follow-ups-section";
 import { ContactDocumentsSection } from "@/components/contacts/contact-documents-section";
+import { LoanSubmissions } from "@/components/loans/loan-submissions";
+import { SubmitToLendersButton } from "@/components/loans/submit-to-lenders-button";
 import { getLoanById } from "@/lib/db/queries/loans";
 import { getFollowUpsByLoan } from "@/lib/db/queries/follow-ups";
+import { getActiveLenders, getLenderSubmissionsByLoan } from "@/lib/db/queries/lenders";
+import { getAllEmailAccounts } from "@/lib/db/queries/emails";
 import { LOAN_TYPE_LABELS } from "@/lib/constants";
 import type { LoanType } from "@/lib/db/schema/loans";
 
@@ -20,11 +24,17 @@ interface LoanDetailPageProps {
 
 export default async function LoanDetailPage({ params }: LoanDetailPageProps) {
   const { id } = await params;
-  const loan = await getLoanById(id);
+
+  const [loan, followUps, activeLenders, submissions, emailAccounts] =
+    await Promise.all([
+      getLoanById(id),
+      getFollowUpsByLoan(id),
+      getActiveLenders(),
+      getLenderSubmissionsByLoan(id),
+      getAllEmailAccounts(),
+    ]);
 
   if (!loan) return notFound();
-
-  const followUps = await getFollowUpsByLoan(id);
 
   const loanDocs = (loan.documents || []).map((d: any) => ({
     id: d.id,
@@ -49,6 +59,11 @@ export default async function LoanDetailPage({ params }: LoanDetailPageProps) {
         }
       >
         <div className="flex gap-2">
+          <SubmitToLendersButton
+            loan={loan as any}
+            lenders={activeLenders as any}
+            accounts={emailAccounts as any}
+          />
           <Link href={`/contacts/${loan.contactId}`}>
             <Button variant="outline" size="sm">
               <User className="mr-2 h-4 w-4" />
@@ -96,6 +111,9 @@ export default async function LoanDetailPage({ params }: LoanDetailPageProps) {
             loanId={loan.id}
             conditions={loan.conditions as any}
           />
+          {submissions.length > 0 && (
+            <LoanSubmissions submissions={submissions as any} />
+          )}
           <LoanActivityTimeline activities={loan.loanActivities as any} />
         </div>
       </div>

@@ -8,4 +8,5 @@ export * from "./loans";
 export * from "./documents";
 export * from "./emails";
 export * from "./follow-ups";
+export * from "./lenders";
 export * from "./relations";

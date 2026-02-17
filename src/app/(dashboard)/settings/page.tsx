@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Tags, Mail, Shield } from "lucide-react";
+import { Tags, Mail, Shield, Building2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
@@ -21,6 +21,12 @@ const settingsSections = [
     description: "Configure email accounts and inbox settings",
     href: "/settings/email",
     icon: Mail,
+  },
+  {
+    title: "Lenders",
+    description: "Manage lender contacts for deal submissions",
+    href: "/settings/lenders",
+    icon: Building2,
   },
 ];
 

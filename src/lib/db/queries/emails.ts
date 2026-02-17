@@ -72,7 +72,15 @@ export async function getEmailById(id: string) {
   return db.query.emails.findFirst({
     where: eq(emails.id, id),
     with: {
-      contact: true,
+      contact: {
+        with: {
+          contactTags: {
+            with: {
+              tag: true,
+            },
+          },
+        },
+      },
       attachments: true,
       account: true,
     },

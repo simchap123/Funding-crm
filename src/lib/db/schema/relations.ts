@@ -15,6 +15,7 @@ import {
 } from "./documents";
 import { emailAccounts, emails, emailAttachments } from "./emails";
 import { followUps } from "./follow-ups";
+import { lenders, lenderSubmissions, lenderQuotes } from "./lenders";
 
 export const usersRelations = relations(users, ({ many }) => ({
   contacts: many(contacts),
@@ -120,6 +121,7 @@ export const loansRelations = relations(loans, ({ one, many }) => ({
   loanActivities: many(loanActivities),
   conditions: many(loanConditions),
   documents: many(documents),
+  lenderSubmissions: many(lenderSubmissions),
 }));
 
 export const loanActivitiesRelations = relations(
@@ -271,5 +273,44 @@ export const followUpsRelations = relations(followUps, ({ one }) => ({
   owner: one(users, {
     fields: [followUps.ownerId],
     references: [users.id],
+  }),
+}));
+
+// Lender relations
+export const lendersRelations = relations(lenders, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [lenders.ownerId],
+    references: [users.id],
+  }),
+  quotes: many(lenderQuotes),
+}));
+
+export const lenderSubmissionsRelations = relations(
+  lenderSubmissions,
+  ({ one, many }) => ({
+    loan: one(loans, {
+      fields: [lenderSubmissions.loanId],
+      references: [loans.id],
+    }),
+    email: one(emails, {
+      fields: [lenderSubmissions.emailId],
+      references: [emails.id],
+    }),
+    owner: one(users, {
+      fields: [lenderSubmissions.ownerId],
+      references: [users.id],
+    }),
+    quotes: many(lenderQuotes),
+  })
+);
+
+export const lenderQuotesRelations = relations(lenderQuotes, ({ one }) => ({
+  submission: one(lenderSubmissions, {
+    fields: [lenderQuotes.submissionId],
+    references: [lenderSubmissions.id],
+  }),
+  lender: one(lenders, {
+    fields: [lenderQuotes.lenderId],
+    references: [lenders.id],
   }),
 }));

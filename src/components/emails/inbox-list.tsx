@@ -214,7 +214,7 @@ export function InboxList({ emails }: { emails: EmailItem[] }) {
             href={`/inbox/${email.id}`}
             prefetch={false}
             className={cn(
-              "group flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors",
+              "group flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors overflow-hidden w-full",
               !email.isRead && "bg-blue-50/50 dark:bg-blue-950/20"
             )}
             onClick={async () => {
