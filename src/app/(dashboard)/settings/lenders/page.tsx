@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { PageHeader } from "@/components/shared/page-header";
 import { LendersSettings } from "@/components/lenders/lenders-settings";
 import { getLenders } from "@/lib/db/queries/lenders";
