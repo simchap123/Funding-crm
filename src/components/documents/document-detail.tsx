@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import {
   Send,
-  Plus,
   Trash2,
   UserPlus,
   FileSignature,
@@ -17,6 +16,10 @@ import {
   Paperclip,
   FileText,
   Upload,
+  Pen,
+  Calendar,
+  Type,
+  Mail,
 } from "lucide-react";
 import {
   Card,
@@ -29,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -52,19 +56,29 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DocumentStatusBadge } from "./document-status-badge";
+import { FieldInputDialog } from "./field-input-dialog";
 import {
   addRecipient,
   removeRecipient,
   addAttachment,
   removeAttachment,
+  addSignatureField,
   sendDocument,
   voidDocument,
+  signField,
 } from "@/lib/actions/documents";
-import type { DocumentStatus } from "@/lib/db/schema/documents";
+import type { DocumentStatus, DocumentFieldType } from "@/lib/db/schema/documents";
+import type { FieldPlacement } from "./pdf-viewer";
+
+// Lazy load PDF viewer since it's heavy
+const PdfViewer = lazy(() =>
+  import("./pdf-viewer").then((mod) => ({ default: mod.PdfViewer }))
+);
 
 type AttachmentType = {
   id: string;
   fileName: string;
+  fileData: string | null;
   fileSize: number | null;
   mimeType: string | null;
   pageCount: number | null;
@@ -118,17 +132,60 @@ const RECIPIENT_STATUS_ICON: Record<string, any> = {
   declined: Ban,
 };
 
+const FIELD_TYPE_OPTIONS = [
+  { value: "signature", label: "Signature", icon: Pen },
+  { value: "date", label: "Date", icon: Calendar },
+  { value: "text", label: "Text", icon: Type },
+  { value: "name", label: "Full Name", icon: Type },
+  { value: "email", label: "Email", icon: Mail },
+  { value: "initials", label: "Initials", icon: Pen },
+] as const;
+
 export function DocumentDetail({ document: doc }: { document: DocumentType }) {
   const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState("signer");
 
+  // PDF & field state
+  const [activeAttachment, setActiveAttachment] = useState<AttachmentType | null>(
+    doc.attachments?.[0] || null
+  );
+  const [activeFieldType, setActiveFieldType] = useState<FieldPlacement["type"] | null>(null);
+  const [placedFields, setPlacedFields] = useState<FieldPlacement[]>([]);
+  const [selectedRecipientId, setSelectedRecipientId] = useState<string>(
+    doc.recipients[0]?.id || ""
+  );
+
+  // Signing state (owner self-sign)
+  const [signingField, setSigningField] = useState<FieldPlacement | null>(null);
+  const [signingMode, setSigningMode] = useState(false);
+
   const isDraft = doc.status === "draft";
   const signingBaseUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/sign/`
       : "/sign/";
+
+  // Build existing fields from DB
+  const existingFields: FieldPlacement[] = useMemo(() => {
+    if (!activeAttachment) return [];
+    return activeAttachment.fields.map((f: any) => ({
+      id: f.id,
+      type: f.type as FieldPlacement["type"],
+      page: f.page,
+      xPercent: f.xPercent,
+      yPercent: f.yPercent,
+      widthPercent: f.widthPercent,
+      heightPercent: f.heightPercent,
+      label: f.label,
+      value: f.value,
+      filledAt: f.filledAt,
+      recipientId: f.recipientId,
+    }));
+  }, [activeAttachment]);
+
+  const allFields = [...existingFields, ...placedFields];
 
   const handleAddRecipient = async () => {
     if (!newName.trim() || !newEmail.trim()) return;
@@ -159,12 +216,57 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
   };
 
   const handleSend = async () => {
+    // First save any placed fields
+    if (placedFields.length > 0 && activeAttachment) {
+      for (const field of placedFields) {
+        await addSignatureField({
+          documentId: doc.id,
+          recipientId: field.recipientId || selectedRecipientId,
+          attachmentId: activeAttachment.id,
+          type: field.type as DocumentFieldType,
+          page: field.page,
+          xPercent: field.xPercent,
+          yPercent: field.yPercent,
+          widthPercent: field.widthPercent,
+          heightPercent: field.heightPercent,
+          label: field.label,
+        });
+      }
+      setPlacedFields([]);
+    }
+
     const result = await sendDocument(doc.id);
     if ("error" in result && result.error) {
       toast.error(result.error as string);
       return;
     }
     toast.success("Document sent for signing!");
+  };
+
+  const handleSaveFields = async () => {
+    if (placedFields.length === 0 || !activeAttachment) {
+      toast.info("No new fields to save");
+      return;
+    }
+
+    for (const field of placedFields) {
+      await addSignatureField({
+        documentId: doc.id,
+        recipientId: field.recipientId || selectedRecipientId,
+        attachmentId: activeAttachment.id,
+        type: field.type as DocumentFieldType,
+        page: field.page,
+        xPercent: field.xPercent,
+        yPercent: field.yPercent,
+        widthPercent: field.widthPercent,
+        heightPercent: field.heightPercent,
+        label: field.label,
+      });
+    }
+
+    setPlacedFields([]);
+    setActiveFieldType(null);
+    toast.success(`${placedFields.length} field(s) saved`);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,6 +303,7 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
       toast.error(result.error as string);
       return;
     }
+    if (activeAttachment?.id === attachmentId) setActiveAttachment(null);
     toast.success("Attachment removed");
   };
 
@@ -214,12 +317,38 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
     toast.success("Signing link copied to clipboard");
   };
 
+  // Handle field click in sign mode
+  const handleFieldClick = (field: FieldPlacement) => {
+    setSigningField(field);
+  };
+
+  const handleFieldSubmit = async (fieldId: string, value: string) => {
+    // Find the recipient whose fields these are
+    // For owner self-sign, we need to find the access token
+    const recipient = doc.recipients.find((r) =>
+      r.fields.some((f: any) => f.id === fieldId)
+    );
+
+    if (recipient) {
+      const result = await signField(fieldId, value, recipient.accessToken);
+      if ("error" in result && result.error) {
+        toast.error(result.error as string);
+        return;
+      }
+      toast.success("Field signed!");
+    } else {
+      toast.error("Could not find recipient for this field");
+    }
+  };
+
+  const hasPdfAttachment = activeAttachment?.mimeType === "application/pdf" && activeAttachment?.fileData;
+
   return (
     <div className="space-y-6">
       {/* Header Card */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <CardTitle>{doc.title}</CardTitle>
               {doc.description && (
@@ -237,6 +366,17 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
             </div>
             <div className="flex items-center gap-2">
               <DocumentStatusBadge status={doc.status as DocumentStatus} />
+              {!isDraft && !signingMode && existingFields.some((f) => !f.filledAt) && (
+                <Button variant="outline" onClick={() => setSigningMode(true)}>
+                  <Pen className="mr-2 h-4 w-4" />
+                  Sign Now
+                </Button>
+              )}
+              {signingMode && (
+                <Button variant="outline" onClick={() => setSigningMode(false)}>
+                  Done Signing
+                </Button>
+              )}
               {isDraft && doc.recipients.length > 0 && (
                 <Button onClick={handleSend}>
                   <Send className="mr-2 h-4 w-4" />
@@ -289,7 +429,85 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
         </CardContent>
       </Card>
 
-      {/* Attachments */}
+      {/* PDF Viewer with field placement */}
+      {hasPdfAttachment && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
+            <CardTitle className="flex items-center gap-2">
+              <FileSignature className="h-5 w-5" />
+              {signingMode ? "Sign Document" : isDraft ? "Prepare Document" : "Document Preview"}
+            </CardTitle>
+            {isDraft && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {doc.recipients.length > 0 && (
+                  <Select value={selectedRecipientId} onValueChange={setSelectedRecipientId}>
+                    <SelectTrigger className="w-[180px] h-8">
+                      <SelectValue placeholder="Assign to..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {doc.recipients.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {FIELD_TYPE_OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  return (
+                    <Button
+                      key={opt.value}
+                      size="sm"
+                      variant={activeFieldType === opt.value ? "default" : "outline"}
+                      onClick={() =>
+                        setActiveFieldType(
+                          activeFieldType === opt.value ? null : opt.value
+                        )
+                      }
+                    >
+                      <Icon className="mr-1 h-3 w-3" />
+                      {opt.label}
+                    </Button>
+                  );
+                })}
+                {placedFields.length > 0 && (
+                  <Button size="sm" onClick={handleSaveFields}>
+                    Save {placedFields.length} field(s)
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardHeader>
+          <CardContent>
+            {activeFieldType && isDraft && (
+              <p className="text-sm text-muted-foreground mb-3">
+                Click anywhere on the PDF to place a <strong>{activeFieldType}</strong> field.
+                {selectedRecipientId
+                  ? ` Assigned to: ${doc.recipients.find((r) => r.id === selectedRecipientId)?.name}`
+                  : " Select a recipient first."}
+              </p>
+            )}
+            <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-lg" />}>
+              <PdfViewer
+                fileData={activeAttachment.fileData!}
+                fields={allFields}
+                mode={signingMode ? "sign" : isDraft ? "place-fields" : "view"}
+                onFieldsChange={(fields) => {
+                  // Separate existing from new
+                  const newFields = fields.filter((f) => f.tempId);
+                  setPlacedFields(newFields);
+                }}
+                onFieldClick={handleFieldClick}
+                activeFieldType={isDraft ? activeFieldType : null}
+                recipientId={selectedRecipientId}
+              />
+            </Suspense>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Attachments list */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
@@ -319,7 +537,7 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
             <div className="text-center py-4">
               <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">
-                No attachments yet. Upload files that need to be signed.
+                No attachments yet. Upload a PDF to get started.
               </p>
             </div>
           ) : (
@@ -327,7 +545,12 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
               {doc.attachments.map((attachment) => (
                 <div
                   key={attachment.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border"
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    activeAttachment?.id === attachment.id
+                      ? "border-primary bg-primary/5"
+                      : "hover:bg-muted/50"
+                  }`}
+                  onClick={() => setActiveAttachment(attachment)}
                 >
                   <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -340,13 +563,12 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
                           {(attachment.fileSize / 1024).toFixed(0)} KB
                         </span>
                       )}
-                      {attachment.mimeType && (
-                        <span>{attachment.mimeType}</span>
+                      {attachment.mimeType === "application/pdf" && (
+                        <Badge variant="outline" className="text-xs">PDF</Badge>
                       )}
                       {attachment.fields.length > 0 && (
                         <Badge variant="outline" className="text-xs">
-                          {attachment.fields.length} signature field
-                          {attachment.fields.length !== 1 ? "s" : ""}
+                          {attachment.fields.length} field{attachment.fields.length !== 1 ? "s" : ""}
                         </Badge>
                       )}
                     </div>
@@ -356,7 +578,10 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-destructive shrink-0"
-                      onClick={() => handleRemoveAttachment(attachment.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveAttachment(attachment.id);
+                      }}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -437,8 +662,6 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Viewed</TableHead>
-                  <TableHead>Signed</TableHead>
                   <TableHead>Signing Link</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
@@ -463,16 +686,6 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
                             {r.status}
                           </span>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {r.viewedAt
-                          ? format(new Date(r.viewedAt), "MMM d, h:mm a")
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {r.signedAt
-                          ? format(new Date(r.signedAt), "MMM d, h:mm a")
-                          : "—"}
                       </TableCell>
                       <TableCell>
                         {r.role === "signer" && doc.status !== "draft" && (
@@ -565,6 +778,14 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
           )}
         </CardContent>
       </Card>
+
+      {/* Field input dialog for signing */}
+      <FieldInputDialog
+        open={!!signingField}
+        onOpenChange={(open) => !open && setSigningField(null)}
+        field={signingField}
+        onSubmit={handleFieldSubmit}
+      />
     </div>
   );
 }

@@ -90,6 +90,9 @@ export async function getDocumentByToken(accessToken: string) {
         with: {
           fields: true,
           recipients: true,
+          attachments: {
+            with: { fields: true },
+          },
         },
       },
       fields: true,
