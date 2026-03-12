@@ -147,7 +147,7 @@ export function FieldInputDialog({
     if (!field) return;
     const fieldId = field.id || field.tempId || "";
 
-    if (field.type === "signature") {
+    if (field.type === "signature" || field.type === "initials") {
       // Use drawn signature or generate from typed name
       if (signatureData) {
         onSubmit(fieldId, signatureData);
