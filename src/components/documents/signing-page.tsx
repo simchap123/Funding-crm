@@ -78,8 +78,13 @@ export function SigningPage({ data }: { data: RecipientData }) {
     (a) => a.mimeType === "application/pdf" && a.fileData
   );
 
-  // Build fields for the PDF viewer
-  const pdfFields: FieldPlacement[] = data.fields.map((f) => ({
+  // Build fields for the PDF viewer — show ALL fields on the document
+  // (so recipient can see where others need to sign too) but only
+  // allow interaction with fields assigned to this recipient
+  const allDocumentFields: Field[] = pdfAttachment?.fields || [];
+  const myFieldIds = new Set(data.fields.map((f) => f.id));
+
+  const pdfFields: FieldPlacement[] = allDocumentFields.map((f) => ({
     id: f.id,
     type: f.type as FieldPlacement["type"],
     page: f.page,
@@ -90,6 +95,7 @@ export function SigningPage({ data }: { data: RecipientData }) {
     label: f.label || undefined,
     value: fieldValues[f.id] || f.value,
     filledAt: f.filledAt,
+    recipientId: myFieldIds.has(f.id) ? data.id : undefined,
   }));
 
   const pendingFields = data.fields.filter(
@@ -98,6 +104,8 @@ export function SigningPage({ data }: { data: RecipientData }) {
 
   const handleFieldClick = (field: FieldPlacement) => {
     if (field.filledAt || fieldValues[field.id || ""]) return;
+    // Only allow signing fields assigned to this recipient
+    if (!myFieldIds.has(field.id || "")) return;
     setSigningField(field);
   };
 

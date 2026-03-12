@@ -1,15 +1,24 @@
-import { createClient } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import { drizzle as drizzleBetterSqlite } from "drizzle-orm/better-sqlite3";
+import { drizzle as drizzleLibsql } from "drizzle-orm/libsql";
 import { nanoid } from "nanoid";
 import { hash } from "bcryptjs";
 import * as schema from "../src/lib/db/schema";
 
 async function seed() {
-  const client = createClient({
-    url: process.env.TURSO_DATABASE_URL!,
-    authToken: process.env.TURSO_AUTH_TOKEN,
-  });
-  const db = drizzle(client, { schema });
+  const url = process.env.TURSO_DATABASE_URL;
+  if (!url) throw new Error("TURSO_DATABASE_URL is not set");
+
+  let db: ReturnType<typeof drizzleBetterSqlite<typeof schema>>;
+  if (url.startsWith("file:")) {
+    const Database = require("better-sqlite3");
+    const sqlite = new Database(url.replace("file:", ""));
+    sqlite.pragma("journal_mode = WAL");
+    db = drizzleBetterSqlite(sqlite, { schema });
+  } else {
+    const { createClient } = require("@libsql/client");
+    const client = createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN });
+    db = drizzleLibsql(client, { schema }) as any;
+  }
 
   console.log("Seeding database...");
 
