@@ -40,7 +40,7 @@ export async function importContacts(rows: ImportRow[]) {
       phone: row.phone || null,
       company: row.company || null,
       jobTitle: row.jobTitle || null,
-      stage: (row.stage as any) || "new",
+      stage: (row.stage as any) || "new_lead",
       source: (row.source as any) || null,
       ownerId: userId,
     }));

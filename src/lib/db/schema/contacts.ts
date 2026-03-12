@@ -3,12 +3,14 @@ import { sql } from "drizzle-orm";
 import { users } from "./users";
 
 export const LEAD_STAGES = [
-  "new",
-  "contacted",
-  "qualified",
-  "proposal",
-  "negotiation",
-  "won",
+  "new_lead",
+  "info_gathering",
+  "lender_outreach",
+  "options_presented",
+  "application",
+  "approved",
+  "due_diligence",
+  "funded",
   "lost",
 ] as const;
 
@@ -35,7 +37,7 @@ export const contacts = sqliteTable("contacts", {
   phone: text("phone"),
   company: text("company"),
   jobTitle: text("job_title"),
-  stage: text("stage", { enum: LEAD_STAGES }).notNull().default("new"),
+  stage: text("stage", { enum: LEAD_STAGES }).notNull().default("new_lead"),
   source: text("source", { enum: LEAD_SOURCES }),
   score: integer("score").default(0),
   address: text("address"),

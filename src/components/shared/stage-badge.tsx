@@ -9,7 +9,11 @@ interface StageBadgeProps {
 }
 
 export function StageBadge({ stage, className }: StageBadgeProps) {
-  const config = STAGE_CONFIG[stage];
+  const config = STAGE_CONFIG[stage] ?? {
+    label: stage,
+    color: "text-gray-700",
+    bgColor: "bg-gray-100",
+  };
 
   return (
     <Badge

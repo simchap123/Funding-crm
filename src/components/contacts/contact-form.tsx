@@ -47,7 +47,7 @@ export function ContactForm({ contact }: ContactFormProps) {
       phone: contact?.phone || "",
       company: contact?.company || "",
       jobTitle: contact?.jobTitle || "",
-      stage: contact?.stage || "new",
+      stage: contact?.stage || "new_lead",
       source: contact?.source || undefined,
       score: contact?.score || 0,
       address: contact?.address || "",

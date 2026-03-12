@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatsCards } from "@/components/dashboard/stats-cards";
+import { CustomerFlow } from "@/components/dashboard/customer-flow";
 import { PipelineSummary } from "@/components/dashboard/pipeline-summary";
 import { RecentContacts } from "@/components/dashboard/recent-contacts";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
@@ -15,6 +16,11 @@ import {
 async function MetricsSection() {
   const metrics = await getDashboardMetrics();
   return <StatsCards {...metrics} />;
+}
+
+async function CustomerFlowSection() {
+  const stageCounts = await getContactsByStageCount();
+  return <CustomerFlow stageCounts={stageCounts} />;
 }
 
 async function PipelineSection() {
@@ -45,7 +51,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title="Dashboard"
-        description="Overview of your CRM performance"
+        description="Overview of your lending pipeline"
       />
 
       <Suspense
@@ -58,6 +64,10 @@ export default function DashboardPage() {
         }
       >
         <MetricsSection />
+      </Suspense>
+
+      <Suspense fallback={<LargeCardSkeleton />}>
+        <CustomerFlowSection />
       </Suspense>
 
       <div className="grid gap-6 lg:grid-cols-2">

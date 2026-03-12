@@ -2,7 +2,7 @@
 
 import { type ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { MoreHorizontal, Pencil, Trash2, Eye } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Eye, Bell } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,9 +19,10 @@ import type { LeadStage } from "@/lib/db/schema/contacts";
 
 interface ColumnsProps {
   onDelete: (id: string) => void;
+  onFollowUp: (contact: { id: string; name: string }) => void;
 }
 
-export function getColumns({ onDelete }: ColumnsProps): ColumnDef<ContactWithTags>[] {
+export function getColumns({ onDelete, onFollowUp }: ColumnsProps): ColumnDef<ContactWithTags>[] {
   return [
     {
       id: "select",
@@ -132,6 +133,17 @@ export function getColumns({ onDelete }: ColumnsProps): ColumnDef<ContactWithTag
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
               </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                onFollowUp({
+                  id: row.original.id,
+                  name: `${row.original.firstName} ${row.original.lastName}`,
+                })
+              }
+            >
+              <Bell className="mr-2 h-4 w-4" />
+              Set Reminder
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

@@ -5,14 +5,14 @@ interface StatsCardsProps {
   totalContacts: number;
   newThisWeek: number;
   conversionRate: number;
-  wonDeals: number;
+  fundedDeals: number;
 }
 
 export function StatsCards({
   totalContacts,
   newThisWeek,
   conversionRate,
-  wonDeals,
+  fundedDeals,
 }: StatsCardsProps) {
   const stats = [
     {
@@ -25,19 +25,19 @@ export function StatsCards({
       title: "New This Week",
       value: newThisWeek,
       icon: UserPlus,
-      description: "Contacts added this week",
+      description: "New leads this week",
     },
     {
       title: "Conversion Rate",
       value: `${conversionRate}%`,
       icon: TrendingUp,
-      description: "Won / (Won + Lost)",
+      description: "Funded / (Funded + Lost)",
     },
     {
-      title: "Won Deals",
-      value: wonDeals,
+      title: "Funded Deals",
+      value: fundedDeals,
       icon: Trophy,
-      description: "Successfully closed deals",
+      description: "Successfully closed & funded",
     },
   ];
 

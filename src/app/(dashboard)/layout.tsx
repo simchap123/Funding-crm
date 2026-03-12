@@ -4,6 +4,8 @@ import { Header } from "@/components/layout/header";
 import { MobileBottomNav } from "@/components/pwa/mobile-nav";
 import { getUnreadCount } from "@/lib/db/queries/emails";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({
   children,
 }: {

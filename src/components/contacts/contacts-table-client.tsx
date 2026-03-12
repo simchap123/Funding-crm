@@ -13,6 +13,7 @@ import { DataTablePagination } from "@/components/shared/data-table/data-table-p
 import { ContactsToolbar } from "./contacts-toolbar";
 import { getColumns } from "./contacts-columns";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { QuickFollowUpDialog } from "./quick-follow-up-dialog";
 import { deleteContact, deleteContacts } from "@/lib/actions/contacts";
 import type { ContactWithTags, Tag } from "@/lib/types";
 
@@ -37,8 +38,19 @@ export function ContactsTableClient({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [followUpContact, setFollowUpContact] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
-  const columns = useMemo(() => getColumns({ onDelete: setDeleteId }), []);
+  const columns = useMemo(
+    () =>
+      getColumns({
+        onDelete: setDeleteId,
+        onFollowUp: setFollowUpContact,
+      }),
+    []
+  );
 
   const table = useReactTable({
     data,
@@ -110,6 +122,15 @@ export function ContactsTableClient({
         confirmLabel="Delete all"
         destructive
       />
+
+      {followUpContact && (
+        <QuickFollowUpDialog
+          open={!!followUpContact}
+          onOpenChange={(open) => !open && setFollowUpContact(null)}
+          contactId={followUpContact.id}
+          contactName={followUpContact.name}
+        />
+      )}
     </div>
   );
 }

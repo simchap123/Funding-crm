@@ -18,26 +18,26 @@ export async function getDashboardMetrics() {
     .from(contacts)
     .where(gte(contacts.createdAt, weekStr));
 
-  const [wonResult] = await db
+  const [fundedResult] = await db
     .select({ count: count() })
     .from(contacts)
-    .where(eq(contacts.stage, "won"));
+    .where(eq(contacts.stage, "funded"));
 
   const [lostResult] = await db
     .select({ count: count() })
     .from(contacts)
     .where(eq(contacts.stage, "lost"));
 
-  const closedDeals = wonResult.count + lostResult.count;
+  const closedDeals = fundedResult.count + lostResult.count;
   const conversionRate = closedDeals > 0
-    ? Math.round((wonResult.count / closedDeals) * 100)
+    ? Math.round((fundedResult.count / closedDeals) * 100)
     : 0;
 
   return {
     totalContacts: totalResult.count,
     newThisWeek: newThisWeekResult.count,
     conversionRate,
-    wonDeals: wonResult.count,
+    fundedDeals: fundedResult.count,
   };
 }
 

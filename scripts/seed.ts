@@ -45,18 +45,18 @@ async function seed() {
 
   // Create sample contacts
   const contactsData = [
-    { firstName: "John", lastName: "Smith", email: "john@acmecorp.com", phone: "+1-555-0101", company: "Acme Corp", jobTitle: "CEO", stage: "qualified" as const, source: "referral" as const, score: 85 },
-    { firstName: "Sarah", lastName: "Johnson", email: "sarah@techstart.io", phone: "+1-555-0102", company: "TechStart", jobTitle: "CTO", stage: "proposal" as const, source: "website" as const, score: 92 },
-    { firstName: "Mike", lastName: "Williams", email: "mike@globalinc.com", phone: "+1-555-0103", company: "Global Inc", jobTitle: "VP Sales", stage: "new" as const, source: "cold_call" as const, score: 45 },
-    { firstName: "Emily", lastName: "Brown", email: "emily@designco.com", phone: "+1-555-0104", company: "DesignCo", jobTitle: "Director", stage: "contacted" as const, source: "social_media" as const, score: 60 },
-    { firstName: "David", lastName: "Lee", email: "david@enterprise.com", phone: "+1-555-0105", company: "Enterprise Solutions", jobTitle: "CFO", stage: "negotiation" as const, source: "trade_show" as const, score: 95 },
-    { firstName: "Lisa", lastName: "Chen", email: "lisa@innovate.co", phone: "+1-555-0106", company: "Innovate Co", jobTitle: "Founder", stage: "won" as const, source: "referral" as const, score: 100 },
+    { firstName: "John", lastName: "Smith", email: "john@acmecorp.com", phone: "+1-555-0101", company: "Acme Corp", jobTitle: "CEO", stage: "lender_outreach" as const, source: "referral" as const, score: 85 },
+    { firstName: "Sarah", lastName: "Johnson", email: "sarah@techstart.io", phone: "+1-555-0102", company: "TechStart", jobTitle: "CTO", stage: "options_presented" as const, source: "website" as const, score: 92 },
+    { firstName: "Mike", lastName: "Williams", email: "mike@globalinc.com", phone: "+1-555-0103", company: "Global Inc", jobTitle: "VP Sales", stage: "new_lead" as const, source: "cold_call" as const, score: 45 },
+    { firstName: "Emily", lastName: "Brown", email: "emily@designco.com", phone: "+1-555-0104", company: "DesignCo", jobTitle: "Director", stage: "info_gathering" as const, source: "social_media" as const, score: 60 },
+    { firstName: "David", lastName: "Lee", email: "david@enterprise.com", phone: "+1-555-0105", company: "Enterprise Solutions", jobTitle: "CFO", stage: "application" as const, source: "trade_show" as const, score: 95 },
+    { firstName: "Lisa", lastName: "Chen", email: "lisa@innovate.co", phone: "+1-555-0106", company: "Innovate Co", jobTitle: "Founder", stage: "funded" as const, source: "referral" as const, score: 100 },
     { firstName: "Robert", lastName: "Taylor", email: "robert@oldco.com", phone: "+1-555-0107", company: "OldCo", jobTitle: "Manager", stage: "lost" as const, source: "email_campaign" as const, score: 20 },
-    { firstName: "Jennifer", lastName: "Davis", email: "jen@startupx.com", phone: "+1-555-0108", company: "StartupX", jobTitle: "COO", stage: "new" as const, source: "website" as const, score: 55 },
-    { firstName: "Chris", lastName: "Martinez", email: "chris@bigdata.io", phone: "+1-555-0109", company: "BigData.io", jobTitle: "Head of Engineering", stage: "qualified" as const, source: "advertisement" as const, score: 78 },
-    { firstName: "Amanda", lastName: "Wilson", email: "amanda@cloudly.com", phone: "+1-555-0110", company: "Cloudly", jobTitle: "VP Marketing", stage: "contacted" as const, source: "social_media" as const, score: 65 },
-    { firstName: "Tom", lastName: "Anderson", email: "tom@saasify.io", phone: "+1-555-0111", company: "SaaSify", jobTitle: "Product Manager", stage: "proposal" as const, source: "referral" as const, score: 88 },
-    { firstName: "Rachel", lastName: "Garcia", email: "rachel@fintech.co", phone: "+1-555-0112", company: "FinTech Co", jobTitle: "CEO", stage: "new" as const, source: "cold_call" as const, score: 40 },
+    { firstName: "Jennifer", lastName: "Davis", email: "jen@startupx.com", phone: "+1-555-0108", company: "StartupX", jobTitle: "COO", stage: "new_lead" as const, source: "website" as const, score: 55 },
+    { firstName: "Chris", lastName: "Martinez", email: "chris@bigdata.io", phone: "+1-555-0109", company: "BigData.io", jobTitle: "Head of Engineering", stage: "lender_outreach" as const, source: "advertisement" as const, score: 78 },
+    { firstName: "Amanda", lastName: "Wilson", email: "amanda@cloudly.com", phone: "+1-555-0110", company: "Cloudly", jobTitle: "VP Marketing", stage: "info_gathering" as const, source: "social_media" as const, score: 65 },
+    { firstName: "Tom", lastName: "Anderson", email: "tom@saasify.io", phone: "+1-555-0111", company: "SaaSify", jobTitle: "Product Manager", stage: "options_presented" as const, source: "referral" as const, score: 88 },
+    { firstName: "Rachel", lastName: "Garcia", email: "rachel@fintech.co", phone: "+1-555-0112", company: "FinTech Co", jobTitle: "CEO", stage: "new_lead" as const, source: "cold_call" as const, score: 40 },
   ];
 
   const contactIds: string[] = [];

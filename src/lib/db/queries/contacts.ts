@@ -156,12 +156,14 @@ export async function getContactsByStage(ownerId?: string) {
   });
 
   const grouped: Record<LeadStage, typeof data> = {
-    new: [],
-    contacted: [],
-    qualified: [],
-    proposal: [],
-    negotiation: [],
-    won: [],
+    new_lead: [],
+    info_gathering: [],
+    lender_outreach: [],
+    options_presented: [],
+    application: [],
+    approved: [],
+    due_diligence: [],
+    funded: [],
     lost: [],
   };
 

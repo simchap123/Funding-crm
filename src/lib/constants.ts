@@ -4,31 +4,71 @@ import type { DocumentStatus } from "@/lib/db/schema/documents";
 
 export const STAGE_CONFIG: Record<
   LeadStage,
-  { label: string; color: string; bgColor: string }
+  { label: string; color: string; bgColor: string; step: number; description: string }
 > = {
-  new: { label: "New", color: "text-blue-700", bgColor: "bg-blue-100" },
-  contacted: {
-    label: "Contacted",
-    color: "text-yellow-700",
-    bgColor: "bg-yellow-100",
+  new_lead: {
+    label: "New Lead",
+    color: "text-blue-700",
+    bgColor: "bg-blue-100",
+    step: 1,
+    description: "Customer reached out via email, text, WhatsApp, or referral",
   },
-  qualified: {
-    label: "Qualified",
+  info_gathering: {
+    label: "Info Gathering",
+    color: "text-cyan-700",
+    bgColor: "bg-cyan-100",
+    step: 2,
+    description: "Collecting customer details, financials, and loan needs",
+  },
+  lender_outreach: {
+    label: "Lender Outreach",
     color: "text-purple-700",
     bgColor: "bg-purple-100",
+    step: 3,
+    description: "Shopping to lenders to find the best deal for the client",
   },
-  proposal: {
-    label: "Proposal",
+  options_presented: {
+    label: "Options Presented",
     color: "text-orange-700",
     bgColor: "bg-orange-100",
+    step: 4,
+    description: "Presented loan options and terms to the client",
   },
-  negotiation: {
-    label: "Negotiation",
-    color: "text-pink-700",
-    bgColor: "bg-pink-100",
+  application: {
+    label: "Application",
+    color: "text-yellow-700",
+    bgColor: "bg-yellow-100",
+    step: 5,
+    description: "Official loan application submitted to lender",
   },
-  won: { label: "Won", color: "text-green-700", bgColor: "bg-green-100" },
-  lost: { label: "Lost", color: "text-red-700", bgColor: "bg-red-100" },
+  approved: {
+    label: "Approved",
+    color: "text-emerald-700",
+    bgColor: "bg-emerald-100",
+    step: 6,
+    description: "Loan approved, proposal and terms finalized",
+  },
+  due_diligence: {
+    label: "Due Diligence",
+    color: "text-indigo-700",
+    bgColor: "bg-indigo-100",
+    step: 7,
+    description: "Lender verifying documents, appraisals, and paperwork",
+  },
+  funded: {
+    label: "Funded",
+    color: "text-green-700",
+    bgColor: "bg-green-100",
+    step: 8,
+    description: "Deal closed and funds disbursed",
+  },
+  lost: {
+    label: "Lost",
+    color: "text-red-700",
+    bgColor: "bg-red-100",
+    step: 0,
+    description: "Deal did not close",
+  },
 };
 
 export const SOURCE_LABELS: Record<LeadSource, string> = {

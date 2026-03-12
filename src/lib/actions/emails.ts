@@ -257,7 +257,7 @@ export async function createContactFromEmail(emailId: string) {
     lastName,
     email: senderEmail,
     source: "email_campaign",
-    stage: "new",
+    stage: "new_lead",
     ownerId: userId,
   });
 
@@ -338,7 +338,7 @@ export async function simulateIncomingEmail(data: {
       lastName,
       email: data.fromEmail,
       source: "email_campaign",
-      stage: "new",
+      stage: "new_lead",
       ownerId: userId,
     });
 
