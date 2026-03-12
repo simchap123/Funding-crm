@@ -147,6 +147,28 @@ export async function addSignatureField(data: {
 }) {
   await getCurrentUserId();
 
+  if (!data.recipientId) {
+    return { error: "A recipient must be selected before placing fields" };
+  }
+
+  // Verify the recipient exists
+  const recipient = await db.query.documentRecipients.findFirst({
+    where: eq(documentRecipients.id, data.recipientId),
+  });
+  if (!recipient) {
+    return { error: "Recipient not found" };
+  }
+
+  // Verify the attachment exists if provided
+  if (data.attachmentId) {
+    const attachment = await db.query.documentAttachments.findFirst({
+      where: eq(documentAttachments.id, data.attachmentId),
+    });
+    if (!attachment) {
+      return { error: "Attachment not found" };
+    }
+  }
+
   const id = nanoid();
   await db.insert(documentFields).values({
     id,

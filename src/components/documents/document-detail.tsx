@@ -219,7 +219,7 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
     // First save any placed fields
     if (placedFields.length > 0 && activeAttachment) {
       for (const field of placedFields) {
-        await addSignatureField({
+        const result = await addSignatureField({
           documentId: doc.id,
           recipientId: field.recipientId || selectedRecipientId,
           attachmentId: activeAttachment.id,
@@ -231,6 +231,10 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
           heightPercent: field.heightPercent,
           label: field.label,
         });
+        if ("error" in result && result.error) {
+          toast.error(result.error as string);
+          return;
+        }
       }
       setPlacedFields([]);
     }
@@ -249,8 +253,15 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
       return;
     }
 
+    const recipientId = placedFields[0]?.recipientId || selectedRecipientId;
+    if (!recipientId) {
+      toast.error("Please select a recipient before saving fields");
+      return;
+    }
+
+    let savedCount = 0;
     for (const field of placedFields) {
-      await addSignatureField({
+      const result = await addSignatureField({
         documentId: doc.id,
         recipientId: field.recipientId || selectedRecipientId,
         attachmentId: activeAttachment.id,
@@ -262,11 +273,16 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
         heightPercent: field.heightPercent,
         label: field.label,
       });
+      if ("error" in result && result.error) {
+        toast.error(result.error as string);
+        return;
+      }
+      savedCount++;
     }
 
     setPlacedFields([]);
     setActiveFieldType(null);
-    toast.success(`${placedFields.length} field(s) saved`);
+    toast.success(`${savedCount} field(s) saved`);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

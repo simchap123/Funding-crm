@@ -4,16 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import type { LeadStage } from "@/lib/db/schema/contacts";
 
 interface StageBadgeProps {
-  stage: LeadStage;
+  stage: string;
   className?: string;
 }
 
+const FALLBACK = { label: "Unknown", color: "text-gray-700", bgColor: "bg-gray-100" };
+
 export function StageBadge({ stage, className }: StageBadgeProps) {
-  const config = STAGE_CONFIG[stage] ?? {
-    label: stage,
-    color: "text-gray-700",
-    bgColor: "bg-gray-100",
-  };
+  const config = (stage && STAGE_CONFIG[stage as LeadStage]) || FALLBACK;
 
   return (
     <Badge
