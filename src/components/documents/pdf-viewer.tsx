@@ -2,8 +2,6 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import "react-pdf/dist/Page/AnnotationLayer.css";
-import "react-pdf/dist/Page/TextLayer.css";
 import {
   ChevronLeft,
   ChevronRight,
@@ -210,8 +208,8 @@ export function PdfViewer({
               <Page
                 pageNumber={currentPage}
                 scale={scale}
-                renderTextLayer={true}
-                renderAnnotationLayer={true}
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
               />
             </Document>
 
@@ -225,7 +223,7 @@ export function PdfViewer({
                 <div
                   key={field.id || field.tempId || idx}
                   className={cn(
-                    "absolute border-2 border-dashed rounded flex items-center justify-center transition-colors group",
+                    "absolute z-10 border-2 border-dashed rounded flex items-center justify-center transition-colors group",
                     colorClass,
                     isFilled && "border-solid bg-opacity-100",
                     mode === "sign" && !isFilled && "cursor-pointer hover:brightness-95",
