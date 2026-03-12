@@ -70,6 +70,7 @@ import {
 } from "@/lib/actions/documents";
 import type { DocumentStatus, DocumentFieldType } from "@/lib/db/schema/documents";
 import type { FieldPlacement } from "./pdf-viewer";
+import { convertDocxToPdfBase64, isConvertibleToDoc } from "@/lib/convert-to-pdf";
 
 // Dynamic import with SSR disabled — react-pdf/pdfjs-dist crashes in Node workers
 const PdfViewer = dynamic(
@@ -301,24 +302,49 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = (reader.result as string).split(",")[1];
-        const result = await addAttachment({
-          documentId: doc.id,
-          fileName: file.name,
-          fileData: base64,
-          fileSize: file.size,
-          mimeType: file.type,
-          order: (doc.attachments?.length || 0) + i + 1,
-        });
-        if ("error" in result && result.error) {
-          toast.error(result.error as string);
-        } else {
-          toast.success(`${file.name} uploaded`);
+
+      if (isConvertibleToDoc(file.type, file.name)) {
+        // Convert docx/doc to PDF client-side
+        try {
+          toast.info(`Converting ${file.name} to PDF...`);
+          const pdfBase64 = await convertDocxToPdfBase64(file);
+          const result = await addAttachment({
+            documentId: doc.id,
+            fileName: file.name,
+            fileData: pdfBase64,
+            fileSize: file.size,
+            mimeType: "application/pdf",
+            order: (doc.attachments?.length || 0) + i + 1,
+          });
+          if ("error" in result && result.error) {
+            toast.error(result.error as string);
+          } else {
+            toast.success(`${file.name} converted and uploaded`);
+          }
+        } catch {
+          toast.error(`Failed to convert ${file.name}`);
         }
-      };
-      reader.readAsDataURL(file);
+      } else {
+        // PDF or other — store as-is (existing logic)
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const base64 = (reader.result as string).split(",")[1];
+          const result = await addAttachment({
+            documentId: doc.id,
+            fileName: file.name,
+            fileData: base64,
+            fileSize: file.size,
+            mimeType: file.type,
+            order: (doc.attachments?.length || 0) + i + 1,
+          });
+          if ("error" in result && result.error) {
+            toast.error(result.error as string);
+          } else {
+            toast.success(`${file.name} uploaded`);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
     e.target.value = "";
   };
