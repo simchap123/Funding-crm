@@ -85,6 +85,14 @@ export function PdfViewer({
   const [scale, setScale] = useState(1.0);
   const containerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
+  const [dragState, setDragState] = useState<{
+    type: "move" | "resize";
+    fieldIndex: number;
+    handle?: string; // "nw" | "ne" | "sw" | "se"
+    startX: number;
+    startY: number;
+    startField: FieldPlacement;
+  } | null>(null);
 
   const pdfData = `data:application/pdf;base64,${fileData}`;
 
@@ -95,6 +103,7 @@ export function PdfViewer({
   // Handle clicking on PDF page to place a field
   const handlePageClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      if (dragState) return;
       if (mode !== "place-fields" || !activeFieldType || !onFieldsChange) return;
 
       const pageEl = e.currentTarget;
@@ -118,7 +127,7 @@ export function PdfViewer({
 
       onFieldsChange([...fields, newField]);
     },
-    [mode, activeFieldType, currentPage, fields, onFieldsChange, recipientId]
+    [dragState, mode, activeFieldType, currentPage, fields, onFieldsChange, recipientId]
   );
 
   const handleRemoveField = useCallback(
@@ -134,6 +143,66 @@ export function PdfViewer({
     },
     [fields, onFieldsChange]
   );
+
+  useEffect(() => {
+    if (!dragState || !pageRef.current || !onFieldsChange) return;
+
+    const pageEl = pageRef.current;
+    const rect = pageEl.getBoundingClientRect();
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dxPercent = ((e.clientX - dragState.startX) / rect.width) * 100;
+      const dyPercent = ((e.clientY - dragState.startY) / rect.height) * 100;
+      const sf = dragState.startField;
+
+      const updated = [...fields];
+
+      if (dragState.type === "move") {
+        updated[dragState.fieldIndex] = {
+          ...sf,
+          xPercent: Math.max(0, Math.min(100 - sf.widthPercent, sf.xPercent + dxPercent)),
+          yPercent: Math.max(0, Math.min(100 - sf.heightPercent, sf.yPercent + dyPercent)),
+        };
+      } else if (dragState.type === "resize" && dragState.handle) {
+        let newX = sf.xPercent;
+        let newY = sf.yPercent;
+        let newW = sf.widthPercent;
+        let newH = sf.heightPercent;
+
+        if (dragState.handle.includes("e")) newW = Math.max(5, sf.widthPercent + dxPercent);
+        if (dragState.handle.includes("w")) {
+          newW = Math.max(5, sf.widthPercent - dxPercent);
+          newX = sf.xPercent + dxPercent;
+        }
+        if (dragState.handle.includes("s")) newH = Math.max(3, sf.heightPercent + dyPercent);
+        if (dragState.handle.includes("n")) {
+          newH = Math.max(3, sf.heightPercent - dyPercent);
+          newY = sf.yPercent + dyPercent;
+        }
+
+        updated[dragState.fieldIndex] = {
+          ...sf,
+          xPercent: Math.max(0, newX),
+          yPercent: Math.max(0, newY),
+          widthPercent: newW,
+          heightPercent: newH,
+        };
+      }
+
+      onFieldsChange(updated);
+    };
+
+    const handleMouseUp = () => {
+      setDragState(null);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [dragState, fields, onFieldsChange]);
 
   const pageFields = fields.filter((f) => f.page === currentPage);
 
@@ -235,6 +304,21 @@ export function PdfViewer({
                     width: `${field.widthPercent}%`,
                     height: `${field.heightPercent}%`,
                   }}
+                  onMouseDown={(e) => {
+                    if (mode !== "place-fields") return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const fieldIdx = fields.findIndex(
+                      (f) => (f.id && f.id === field.id) || (f.tempId && f.tempId === field.tempId)
+                    );
+                    setDragState({
+                      type: "move",
+                      fieldIndex: fieldIdx,
+                      startX: e.clientX,
+                      startY: e.clientY,
+                      startField: { ...field },
+                    });
+                  }}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (mode === "sign" && !isFilled && onFieldClick) {
@@ -273,6 +357,35 @@ export function PdfViewer({
                       <Trash2 className="h-3 w-3" />
                     </button>
                   )}
+
+                  {/* Resize handles in place-fields mode */}
+                  {mode === "place-fields" && ["nw", "ne", "sw", "se"].map((handle) => (
+                    <div
+                      key={handle}
+                      className={cn(
+                        "absolute w-3 h-3 bg-primary border border-white rounded-sm opacity-0 group-hover:opacity-100 transition-opacity",
+                        handle === "nw" && "-top-1.5 -left-1.5 cursor-nw-resize",
+                        handle === "ne" && "-top-1.5 -right-1.5 cursor-ne-resize",
+                        handle === "sw" && "-bottom-1.5 -left-1.5 cursor-sw-resize",
+                        handle === "se" && "-bottom-1.5 -right-1.5 cursor-se-resize",
+                      )}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const fieldIdx = fields.findIndex(
+                          (f) => (f.id && f.id === field.id) || (f.tempId && f.tempId === field.tempId)
+                        );
+                        setDragState({
+                          type: "resize",
+                          fieldIndex: fieldIdx,
+                          handle,
+                          startX: e.clientX,
+                          startY: e.clientY,
+                          startField: { ...field },
+                        });
+                      }}
+                    />
+                  ))}
                 </div>
               );
             })}
