@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, lazy, Suspense } from "react";
+import { useState, useMemo, Suspense } from "react";
+import dynamic from "next/dynamic";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import {
@@ -70,9 +71,10 @@ import {
 import type { DocumentStatus, DocumentFieldType } from "@/lib/db/schema/documents";
 import type { FieldPlacement } from "./pdf-viewer";
 
-// Lazy load PDF viewer since it's heavy
-const PdfViewer = lazy(() =>
-  import("./pdf-viewer").then((mod) => ({ default: mod.PdfViewer }))
+// Dynamic import with SSR disabled — react-pdf/pdfjs-dist crashes in Node workers
+const PdfViewer = dynamic(
+  () => import("./pdf-viewer").then((mod) => ({ default: mod.PdfViewer })),
+  { ssr: false }
 );
 
 type AttachmentType = {
@@ -216,8 +218,55 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
   };
 
   const handleSend = async () => {
-    // First save any placed fields
-    if (placedFields.length > 0 && activeAttachment) {
+    try {
+      // First save any placed fields
+      if (placedFields.length > 0 && activeAttachment) {
+        for (const field of placedFields) {
+          const result = await addSignatureField({
+            documentId: doc.id,
+            recipientId: field.recipientId || selectedRecipientId,
+            attachmentId: activeAttachment.id,
+            type: field.type as DocumentFieldType,
+            page: field.page,
+            xPercent: field.xPercent,
+            yPercent: field.yPercent,
+            widthPercent: field.widthPercent,
+            heightPercent: field.heightPercent,
+            label: field.label,
+          });
+          if ("error" in result && result.error) {
+            toast.error(result.error as string);
+            return;
+          }
+        }
+        setPlacedFields([]);
+      }
+
+      const result = await sendDocument(doc.id);
+      if ("error" in result && result.error) {
+        toast.error(result.error as string);
+        return;
+      }
+      toast.success("Document sent for signing!");
+    } catch {
+      toast.error("Failed to send document. Please try again.");
+    }
+  };
+
+  const handleSaveFields = async () => {
+    if (placedFields.length === 0 || !activeAttachment) {
+      toast.info("No new fields to save");
+      return;
+    }
+
+    const recipientId = placedFields[0]?.recipientId || selectedRecipientId;
+    if (!recipientId) {
+      toast.error("Please select a recipient before saving fields");
+      return;
+    }
+
+    try {
+      let savedCount = 0;
       for (const field of placedFields) {
         const result = await addSignatureField({
           documentId: doc.id,
@@ -235,54 +284,15 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
           toast.error(result.error as string);
           return;
         }
+        savedCount++;
       }
+
       setPlacedFields([]);
+      setActiveFieldType(null);
+      toast.success(`${savedCount} field(s) saved`);
+    } catch {
+      toast.error("Failed to save fields. Please try again.");
     }
-
-    const result = await sendDocument(doc.id);
-    if ("error" in result && result.error) {
-      toast.error(result.error as string);
-      return;
-    }
-    toast.success("Document sent for signing!");
-  };
-
-  const handleSaveFields = async () => {
-    if (placedFields.length === 0 || !activeAttachment) {
-      toast.info("No new fields to save");
-      return;
-    }
-
-    const recipientId = placedFields[0]?.recipientId || selectedRecipientId;
-    if (!recipientId) {
-      toast.error("Please select a recipient before saving fields");
-      return;
-    }
-
-    let savedCount = 0;
-    for (const field of placedFields) {
-      const result = await addSignatureField({
-        documentId: doc.id,
-        recipientId: field.recipientId || selectedRecipientId,
-        attachmentId: activeAttachment.id,
-        type: field.type as DocumentFieldType,
-        page: field.page,
-        xPercent: field.xPercent,
-        yPercent: field.yPercent,
-        widthPercent: field.widthPercent,
-        heightPercent: field.heightPercent,
-        label: field.label,
-      });
-      if ("error" in result && result.error) {
-        toast.error(result.error as string);
-        return;
-      }
-      savedCount++;
-    }
-
-    setPlacedFields([]);
-    setActiveFieldType(null);
-    toast.success(`${savedCount} field(s) saved`);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -476,6 +486,8 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
                       key={opt.value}
                       size="sm"
                       variant={activeFieldType === opt.value ? "default" : "outline"}
+                      disabled={!selectedRecipientId}
+                      title={!selectedRecipientId ? "Select a recipient first" : undefined}
                       onClick={() =>
                         setActiveFieldType(
                           activeFieldType === opt.value ? null : opt.value

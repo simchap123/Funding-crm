@@ -20,6 +20,16 @@ async function getCurrentUserId() {
   return session.user.id;
 }
 
+async function verifyDocumentOwner(documentId: string) {
+  const userId = await getCurrentUserId();
+  const doc = await db.query.documents.findFirst({
+    where: eq(documents.id, documentId),
+  });
+  if (!doc) throw new Error("Document not found");
+  if (doc.ownerId !== userId) throw new Error("Access denied");
+  return { userId, doc };
+}
+
 export async function createDocument(data: {
   title: string;
   description?: string;
@@ -67,7 +77,7 @@ export async function addRecipient(data: {
   order?: number;
   contactId?: string;
 }) {
-  await getCurrentUserId();
+  await verifyDocumentOwner(data.documentId);
 
   const id = nanoid();
   const accessToken = nanoid(32);
@@ -97,7 +107,7 @@ export async function addAttachment(data: {
   pageCount?: number;
   order?: number;
 }) {
-  await getCurrentUserId();
+  await verifyDocumentOwner(data.documentId);
 
   const id = nanoid();
   await db.insert(documentAttachments).values({
@@ -117,12 +127,18 @@ export async function addAttachment(data: {
 }
 
 export async function removeAttachment(attachmentId: string) {
-  await getCurrentUserId();
+  const userId = await getCurrentUserId();
 
   const attachment = await db.query.documentAttachments.findFirst({
     where: eq(documentAttachments.id, attachmentId),
   });
   if (!attachment) return { error: "Attachment not found" };
+
+  // Verify ownership
+  const doc = await db.query.documents.findFirst({
+    where: eq(documents.id, attachment.documentId),
+  });
+  if (!doc || doc.ownerId !== userId) return { error: "Access denied" };
 
   await db
     .delete(documentAttachments)
@@ -145,27 +161,33 @@ export async function addSignatureField(data: {
   label?: string;
   required?: boolean;
 }) {
-  await getCurrentUserId();
+  await verifyDocumentOwner(data.documentId);
 
   if (!data.recipientId) {
     return { error: "A recipient must be selected before placing fields" };
   }
 
-  // Verify the recipient exists
+  // Verify the recipient exists and belongs to this document
   const recipient = await db.query.documentRecipients.findFirst({
     where: eq(documentRecipients.id, data.recipientId),
   });
   if (!recipient) {
     return { error: "Recipient not found" };
   }
+  if (recipient.documentId !== data.documentId) {
+    return { error: "Recipient does not belong to this document" };
+  }
 
-  // Verify the attachment exists if provided
+  // Verify the attachment exists and belongs to this document
   if (data.attachmentId) {
     const attachment = await db.query.documentAttachments.findFirst({
       where: eq(documentAttachments.id, data.attachmentId),
     });
     if (!attachment) {
       return { error: "Attachment not found" };
+    }
+    if (attachment.documentId !== data.documentId) {
+      return { error: "Attachment does not belong to this document" };
     }
   }
 
@@ -198,8 +220,16 @@ export async function sendDocument(documentId: string) {
   });
 
   if (!doc) return { error: "Document not found" };
+  if (doc.ownerId !== userId) return { error: "Access denied" };
   if (doc.recipients.length === 0)
     return { error: "Add at least one recipient" };
+
+  // Ensure at least one field exists before sending
+  const fields = await db.query.documentFields.findMany({
+    where: eq(documentFields.documentId, documentId),
+  });
+  if (fields.length === 0)
+    return { error: "Add at least one field before sending" };
 
   // Update document status
   await db
@@ -391,7 +421,7 @@ export async function markDocumentViewed(accessToken: string) {
 }
 
 export async function voidDocument(documentId: string) {
-  await getCurrentUserId();
+  await verifyDocumentOwner(documentId);
 
   await db
     .update(documents)
@@ -415,7 +445,7 @@ export async function voidDocument(documentId: string) {
 }
 
 export async function deleteDocument(documentId: string) {
-  await getCurrentUserId();
+  await verifyDocumentOwner(documentId);
   await db.delete(documents).where(eq(documents.id, documentId));
 
   revalidatePath("/documents");
@@ -423,12 +453,18 @@ export async function deleteDocument(documentId: string) {
 }
 
 export async function removeRecipient(recipientId: string) {
-  await getCurrentUserId();
+  const userId = await getCurrentUserId();
 
   const recipient = await db.query.documentRecipients.findFirst({
     where: eq(documentRecipients.id, recipientId),
   });
   if (!recipient) return { error: "Recipient not found" };
+
+  // Verify ownership
+  const doc = await db.query.documents.findFirst({
+    where: eq(documents.id, recipient.documentId),
+  });
+  if (!doc || doc.ownerId !== userId) return { error: "Access denied" };
 
   await db
     .delete(documentRecipients)

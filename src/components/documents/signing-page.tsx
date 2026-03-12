@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +11,9 @@ import { FieldInputDialog } from "./field-input-dialog";
 import { signField, markDocumentViewed } from "@/lib/actions/documents";
 import type { FieldPlacement } from "./pdf-viewer";
 
-const PdfViewer = lazy(() =>
-  import("./pdf-viewer").then((mod) => ({ default: mod.PdfViewer }))
+const PdfViewer = dynamic(
+  () => import("./pdf-viewer").then((mod) => ({ default: mod.PdfViewer })),
+  { ssr: false }
 );
 
 type Field = {
