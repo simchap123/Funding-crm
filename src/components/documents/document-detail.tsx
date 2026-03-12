@@ -455,172 +455,6 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
         </CardContent>
       </Card>
 
-      {/* PDF Viewer with field placement */}
-      {hasPdfAttachment && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
-            <CardTitle className="flex items-center gap-2">
-              <FileSignature className="h-5 w-5" />
-              {signingMode ? "Sign Document" : isDraft ? "Prepare Document" : "Document Preview"}
-            </CardTitle>
-            {isDraft && (
-              <div className="flex items-center gap-2 flex-wrap">
-                {doc.recipients.length > 0 && (
-                  <Select value={selectedRecipientId} onValueChange={setSelectedRecipientId}>
-                    <SelectTrigger className="w-[180px] h-8">
-                      <SelectValue placeholder="Assign to..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {doc.recipients.map((r) => (
-                        <SelectItem key={r.id} value={r.id}>
-                          {r.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                {FIELD_TYPE_OPTIONS.map((opt) => {
-                  const Icon = opt.icon;
-                  return (
-                    <Button
-                      key={opt.value}
-                      size="sm"
-                      variant={activeFieldType === opt.value ? "default" : "outline"}
-                      disabled={!selectedRecipientId}
-                      title={!selectedRecipientId ? "Select a recipient first" : undefined}
-                      onClick={() =>
-                        setActiveFieldType(
-                          activeFieldType === opt.value ? null : opt.value
-                        )
-                      }
-                    >
-                      <Icon className="mr-1 h-3 w-3" />
-                      {opt.label}
-                    </Button>
-                  );
-                })}
-                {placedFields.length > 0 && (
-                  <Button size="sm" onClick={handleSaveFields}>
-                    Save {placedFields.length} field(s)
-                  </Button>
-                )}
-              </div>
-            )}
-          </CardHeader>
-          <CardContent>
-            {activeFieldType && isDraft && (
-              <p className="text-sm text-muted-foreground mb-3">
-                Click anywhere on the PDF to place a <strong>{activeFieldType}</strong> field.
-                {selectedRecipientId
-                  ? ` Assigned to: ${doc.recipients.find((r) => r.id === selectedRecipientId)?.name}`
-                  : " Select a recipient first."}
-              </p>
-            )}
-            <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-lg" />}>
-              <PdfViewer
-                fileData={activeAttachment.fileData!}
-                fields={allFields}
-                mode={signingMode ? "sign" : isDraft ? "place-fields" : "view"}
-                onFieldsChange={(fields) => {
-                  // Separate existing from new
-                  const newFields = fields.filter((f) => f.tempId);
-                  setPlacedFields(newFields);
-                }}
-                onFieldClick={handleFieldClick}
-                activeFieldType={isDraft ? activeFieldType : null}
-                recipientId={selectedRecipientId}
-              />
-            </Suspense>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Attachments list */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Paperclip className="h-5 w-5" />
-            Attachments ({doc.attachments?.length || 0})
-          </CardTitle>
-          {isDraft && (
-            <label>
-              <input
-                type="file"
-                multiple
-                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-              <Button size="sm" variant="outline" asChild>
-                <span>
-                  <Upload className="mr-1 h-4 w-4" />
-                  Upload Files
-                </span>
-              </Button>
-            </label>
-          )}
-        </CardHeader>
-        <CardContent>
-          {(!doc.attachments || doc.attachments.length === 0) ? (
-            <div className="text-center py-4">
-              <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">
-                No attachments yet. Upload a PDF to get started.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {doc.attachments.map((attachment) => (
-                <div
-                  key={attachment.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    activeAttachment?.id === attachment.id
-                      ? "border-primary bg-primary/5"
-                      : "hover:bg-muted/50"
-                  }`}
-                  onClick={() => setActiveAttachment(attachment)}
-                >
-                  <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {attachment.fileName}
-                    </p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {attachment.fileSize && (
-                        <span>
-                          {(attachment.fileSize / 1024).toFixed(0)} KB
-                        </span>
-                      )}
-                      {attachment.mimeType === "application/pdf" && (
-                        <Badge variant="outline" className="text-xs">PDF</Badge>
-                      )}
-                      {attachment.fields.length > 0 && (
-                        <Badge variant="outline" className="text-xs">
-                          {attachment.fields.length} field{attachment.fields.length !== 1 ? "s" : ""}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  {isDraft && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive shrink-0"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveAttachment(attachment.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Recipients */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -747,6 +581,181 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
           )}
         </CardContent>
       </Card>
+
+      {/* Attachments list */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Paperclip className="h-5 w-5" />
+            Attachments ({doc.attachments?.length || 0})
+          </CardTitle>
+          {isDraft && (
+            <label>
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <Button size="sm" variant="outline" asChild>
+                <span>
+                  <Upload className="mr-1 h-4 w-4" />
+                  Upload Files
+                </span>
+              </Button>
+            </label>
+          )}
+        </CardHeader>
+        <CardContent>
+          {(!doc.attachments || doc.attachments.length === 0) ? (
+            <div className="text-center py-4">
+              <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">
+                No attachments yet. Upload a PDF to get started.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {doc.attachments.map((attachment) => (
+                <div
+                  key={attachment.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    activeAttachment?.id === attachment.id
+                      ? "border-primary bg-primary/5"
+                      : "hover:bg-muted/50"
+                  }`}
+                  onClick={() => setActiveAttachment(attachment)}
+                >
+                  <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {attachment.fileName}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {attachment.fileSize && (
+                        <span>
+                          {(attachment.fileSize / 1024).toFixed(0)} KB
+                        </span>
+                      )}
+                      {attachment.mimeType === "application/pdf" && (
+                        <Badge variant="outline" className="text-xs">PDF</Badge>
+                      )}
+                      {attachment.fields.length > 0 && (
+                        <Badge variant="outline" className="text-xs">
+                          {attachment.fields.length} field{attachment.fields.length !== 1 ? "s" : ""}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  {isDraft && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveAttachment(attachment.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* PDF Viewer with field placement */}
+      {hasPdfAttachment && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
+            <CardTitle className="flex items-center gap-2">
+              <FileSignature className="h-5 w-5" />
+              {signingMode ? "Sign Document" : isDraft ? "Prepare Document" : "Document Preview"}
+            </CardTitle>
+            {isDraft && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {doc.recipients.length > 0 && (
+                  <Select value={selectedRecipientId} onValueChange={setSelectedRecipientId}>
+                    <SelectTrigger className="w-[180px] h-8">
+                      <SelectValue placeholder="Assign to..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {doc.recipients.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {FIELD_TYPE_OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  return (
+                    <Button
+                      key={opt.value}
+                      size="sm"
+                      variant={activeFieldType === opt.value ? "default" : "outline"}
+                      disabled={!selectedRecipientId}
+                      title={!selectedRecipientId ? "Select a recipient first" : undefined}
+                      onClick={() =>
+                        setActiveFieldType(
+                          activeFieldType === opt.value ? null : opt.value
+                        )
+                      }
+                    >
+                      <Icon className="mr-1 h-3 w-3" />
+                      {opt.label}
+                    </Button>
+                  );
+                })}
+                {placedFields.length > 0 && (
+                  <Button size="sm" onClick={handleSaveFields}>
+                    Save {placedFields.length} field(s)
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardHeader>
+          <CardContent>
+            {activeFieldType && isDraft && (
+              <p className="text-sm text-muted-foreground mb-3">
+                Click anywhere on the PDF to place a <strong>{activeFieldType}</strong> field.
+                {selectedRecipientId
+                  ? ` Assigned to: ${doc.recipients.find((r) => r.id === selectedRecipientId)?.name}`
+                  : " Select a recipient first."}
+              </p>
+            )}
+            {isDraft && doc.recipients.length === 0 && (
+              <div className="flex items-center justify-center p-8 border-2 border-dashed rounded-lg bg-muted/30">
+                <p className="text-muted-foreground text-center">
+                  Add a signer above to start placing fields on the document.
+                </p>
+              </div>
+            )}
+            {(doc.recipients.length > 0 || !isDraft) && (
+              <Suspense fallback={<Skeleton className="h-[600px] w-full rounded-lg" />}>
+                <PdfViewer
+                  fileData={activeAttachment.fileData!}
+                  fields={allFields}
+                  mode={signingMode ? "sign" : isDraft ? "place-fields" : "view"}
+                  onFieldsChange={(fields) => {
+                    // Separate existing from new
+                    const newFields = fields.filter((f) => f.tempId);
+                    setPlacedFields(newFields);
+                  }}
+                  onFieldClick={handleFieldClick}
+                  activeFieldType={isDraft ? activeFieldType : null}
+                  recipientId={selectedRecipientId}
+                />
+              </Suspense>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Audit Log */}
       <Card>
