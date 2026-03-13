@@ -10,8 +10,11 @@ import {
   documentFields,
   documentAttachments,
   documentAuditLog,
+  emailAccounts,
 } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
+import { sendEmailViaSMTP } from "@/lib/email/smtp-send";
+import { signingInviteEmail } from "@/lib/email/signing-emails";
 import type { DocumentFieldType } from "@/lib/db/schema/documents";
 
 async function getCurrentUserId() {
@@ -259,8 +262,36 @@ export async function sendDocument(documentId: string) {
     }),
   });
 
-  // In production, send emails to recipients with signing links here
-  // For now, the signing links are available via the access tokens
+  // Send signing invite emails
+  const account = await db.query.emailAccounts.findFirst({
+    where: eq(emailAccounts.isActive, true),
+  });
+
+  if (account) {
+    const session = await auth();
+    const senderName = session?.user?.name || "Document Sender";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+    for (const recipient of doc.recipients) {
+      try {
+        const emailContent = signingInviteEmail({
+          recipientName: recipient.name,
+          documentTitle: doc.title,
+          senderName,
+          message: doc.message,
+          signingUrl: `${baseUrl}/sign/${recipient.accessToken}`,
+        });
+        await sendEmailViaSMTP(account, {
+          to: [recipient.email],
+          subject: emailContent.subject,
+          html: emailContent.html,
+          text: emailContent.text,
+        });
+      } catch (err) {
+        console.error(`[CRM] Failed to email recipient ${recipient.email}:`, err);
+      }
+    }
+  }
 
   revalidatePath(`/documents/${documentId}`);
   revalidatePath("/documents");
