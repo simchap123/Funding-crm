@@ -8,7 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FieldInputDialog } from "./field-input-dialog";
+import { Input } from "@/components/ui/input";
 import { signField, markDocumentViewed } from "@/lib/actions/documents";
+import { requestVerificationCode, verifyCode } from "@/lib/actions/signing";
 import type { FieldPlacement } from "./pdf-viewer";
 
 const PdfViewer = dynamic(
@@ -56,6 +58,13 @@ type RecipientData = {
 };
 
 export function SigningPage({ data }: { data: RecipientData }) {
+  const [verificationStep, setVerificationStep] = useState<"email" | "code" | "verified">("email");
+  const [emailInput, setEmailInput] = useState("");
+  const [codeInput, setCodeInput] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verificationError, setVerificationError] = useState("");
+  const [codeSentTo, setCodeSentTo] = useState("");
+
   const [fieldValues, setFieldValues] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     for (const f of data.fields) {
@@ -152,6 +161,58 @@ export function SigningPage({ data }: { data: RecipientData }) {
     }
   };
 
+  const handleEmailSubmit = async () => {
+    setVerifying(true);
+    setVerificationError("");
+    try {
+      const result = await requestVerificationCode(data.accessToken, emailInput);
+      if ("error" in result && result.error) {
+        setVerificationError(result.error as string);
+      } else {
+        setCodeSentTo(result.email || emailInput);
+        setVerificationStep("code");
+      }
+    } catch {
+      setVerificationError("Something went wrong. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleCodeSubmit = async () => {
+    setVerifying(true);
+    setVerificationError("");
+    try {
+      const result = await verifyCode(data.accessToken, codeInput);
+      if ("error" in result && result.error) {
+        setVerificationError(result.error as string);
+      } else {
+        setVerificationStep("verified");
+      }
+    } catch {
+      setVerificationError("Something went wrong. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setVerifying(true);
+    setVerificationError("");
+    try {
+      const result = await requestVerificationCode(data.accessToken, emailInput);
+      if ("error" in result && result.error) {
+        setVerificationError(result.error as string);
+      } else {
+        toast.success("New code sent!");
+      }
+    } catch {
+      setVerificationError("Failed to resend code.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   if (allSigned || docCompleted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
@@ -166,6 +227,71 @@ export function SigningPage({ data }: { data: RecipientData }) {
                 ? "All parties have signed this document."
                 : "You have already completed your signature for this document."}
             </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show verification screens if not yet verified
+  if (verificationStep === "email") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle>{data.document.title}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Enter your email address to verify your identity.
+            </p>
+            <Input
+              type="email"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              placeholder="your@email.com"
+              onKeyDown={(e) => e.key === "Enter" && handleEmailSubmit()}
+            />
+            {verificationError && (
+              <p className="text-sm text-destructive">{verificationError}</p>
+            )}
+            <Button className="w-full" onClick={handleEmailSubmit} disabled={verifying || !emailInput}>
+              {verifying ? "Verifying..." : "Continue"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (verificationStep === "code") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle>Enter Verification Code</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              We sent a 6-digit code to <strong>{codeSentTo}</strong>. Enter it below.
+            </p>
+            <Input
+              value={codeInput}
+              onChange={(e) => setCodeInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="000000"
+              className="text-center text-2xl tracking-widest"
+              maxLength={6}
+              onKeyDown={(e) => e.key === "Enter" && codeInput.length === 6 && handleCodeSubmit()}
+            />
+            {verificationError && (
+              <p className="text-sm text-destructive">{verificationError}</p>
+            )}
+            <Button className="w-full" onClick={handleCodeSubmit} disabled={verifying || codeInput.length !== 6}>
+              {verifying ? "Verifying..." : "Verify"}
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={handleResendCode} disabled={verifying}>
+              Resend Code
+            </Button>
           </CardContent>
         </Card>
       </div>
