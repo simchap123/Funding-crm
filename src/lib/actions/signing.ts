@@ -58,22 +58,27 @@ export async function requestVerificationCode(accessToken: string, email: string
     where: eq(emailAccounts.isActive, true),
   });
 
-  if (account) {
-    try {
-      const emailContent = verificationCodeEmail({
-        recipientName: recipient.name,
-        documentTitle: (recipient as any).document.title,
-        code,
-      });
-      await sendEmailViaSMTP(account, {
-        to: [recipient.email],
-        subject: emailContent.subject,
-        html: emailContent.html,
-        text: emailContent.text,
-      });
-    } catch (err) {
-      console.error("[CRM] Failed to send verification code email:", err);
-    }
+  if (!account) {
+    console.error("[CRM] No active email account configured — verification code not sent");
+    return { success: true, email: recipient.email, warning: "No email account configured. Code stored but not sent." };
+  }
+
+  try {
+    const emailContent = verificationCodeEmail({
+      recipientName: recipient.name,
+      documentTitle: (recipient as any).document.title,
+      code,
+    });
+    await sendEmailViaSMTP(account, {
+      to: [recipient.email],
+      subject: emailContent.subject,
+      html: emailContent.html,
+      text: emailContent.text,
+    });
+    console.log(`[CRM] Verification code sent to ${recipient.email}`);
+  } catch (err) {
+    console.error("[CRM] Failed to send verification code email:", err);
+    return { success: true, email: recipient.email, warning: "Failed to send email. Please check SMTP settings." };
   }
 
   return { success: true, email: recipient.email };

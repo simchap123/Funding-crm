@@ -169,6 +169,9 @@ export function SigningPage({ data }: { data: RecipientData }) {
       if ("error" in result && result.error) {
         setVerificationError(result.error as string);
       } else {
+        if ("warning" in result && result.warning) {
+          toast.warning(result.warning as string);
+        }
         setCodeSentTo(result.email || emailInput);
         setVerificationStep("code");
       }
@@ -204,7 +207,11 @@ export function SigningPage({ data }: { data: RecipientData }) {
       if ("error" in result && result.error) {
         setVerificationError(result.error as string);
       } else {
-        toast.success("New code sent!");
+        if ("warning" in result && result.warning) {
+          toast.warning(result.warning as string);
+        } else {
+          toast.success("New code sent!");
+        }
       }
     } catch {
       setVerificationError("Failed to resend code.");
