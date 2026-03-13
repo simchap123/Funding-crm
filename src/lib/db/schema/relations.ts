@@ -12,6 +12,7 @@ import {
   documentFields,
   documentAttachments,
   documentAuditLog,
+  signingVerificationCodes,
 } from "./documents";
 import { emailAccounts, emails, emailAttachments } from "./emails";
 import { followUps } from "./follow-ups";
@@ -208,6 +209,16 @@ export const documentFieldsRelations = relations(
     attachment: one(documentAttachments, {
       fields: [documentFields.attachmentId],
       references: [documentAttachments.id],
+    }),
+  })
+);
+
+export const signingVerificationCodesRelations = relations(
+  signingVerificationCodes,
+  ({ one }) => ({
+    recipient: one(documentRecipients, {
+      fields: [signingVerificationCodes.recipientId],
+      references: [documentRecipients.id],
     }),
   })
 );

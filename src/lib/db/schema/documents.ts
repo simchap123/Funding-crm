@@ -160,6 +160,19 @@ export const documentAttachments = sqliteTable("document_attachments", {
     .default(sql`(current_timestamp)`),
 });
 
+export const signingVerificationCodes = sqliteTable("signing_verification_codes", {
+  id: text("id").primaryKey(),
+  recipientId: text("recipient_id")
+    .notNull()
+    .references(() => documentRecipients.id, { onDelete: "cascade" }),
+  code: text("code").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  verified: integer("verified", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
 export const documentAuditLog = sqliteTable("document_audit_log", {
   id: text("id").primaryKey(),
   documentId: text("document_id")
