@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { STAGE_CONFIG } from "@/lib/constants";
 import { LEAD_STAGES } from "@/lib/db/schema/contacts";
@@ -22,7 +23,11 @@ export function PipelineSummary({ stageCounts }: PipelineSummaryProps) {
           const percent = total > 0 ? (count / total) * 100 : 0;
 
           return (
-            <div key={stage} className="space-y-1">
+            <Link
+              key={stage}
+              href={`/contacts?stage=${stage}`}
+              className="block space-y-1 cursor-pointer rounded-lg p-2 -m-2 hover:shadow-md transition-shadow"
+            >
               <div className="flex items-center justify-between text-sm">
                 <span className={cn("font-medium", config.color)}>
                   {config.label}
@@ -35,7 +40,7 @@ export function PipelineSummary({ stageCounts }: PipelineSummaryProps) {
                   style={{ width: `${percent}%` }}
                 />
               </div>
-            </div>
+            </Link>
           );
         })}
       </CardContent>

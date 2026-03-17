@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LEAD_STAGES, type LeadStage } from "@/lib/db/schema/contacts";
@@ -32,7 +33,10 @@ export function CustomerFlow({ stageCounts }: CustomerFlowProps) {
 
             return (
               <div key={stage} className="flex items-start">
-                <div className="flex flex-col items-center text-center min-w-[110px]">
+                <Link
+                  href={`/contacts?stage=${stage}`}
+                  className="flex flex-col items-center text-center min-w-[110px] cursor-pointer rounded-lg p-1.5 hover:shadow-md transition-shadow"
+                >
                   <div
                     className={cn(
                       "flex items-center justify-center w-11 h-11 rounded-full text-sm font-bold mb-2 border-2",
@@ -56,7 +60,7 @@ export function CustomerFlow({ stageCounts }: CustomerFlowProps) {
                   <span className="text-[10px] text-muted-foreground leading-tight max-w-[100px]">
                     {config.description}
                   </span>
-                </div>
+                </Link>
                 {i < FLOW_STAGES.length - 1 && (
                   <ArrowRight className="h-4 w-4 text-muted-foreground mt-3.5 mx-0.5 shrink-0" />
                 )}
@@ -73,7 +77,10 @@ export function CustomerFlow({ stageCounts }: CustomerFlowProps) {
 
             return (
               <div key={stage}>
-                <div className="flex items-center gap-3 py-2">
+                <Link
+                  href={`/contacts?stage=${stage}`}
+                  className="flex items-center gap-3 py-2 cursor-pointer rounded-lg px-2 hover:shadow-md transition-shadow"
+                >
                   <div
                     className={cn(
                       "flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold shrink-0 border-2",
@@ -99,7 +106,7 @@ export function CustomerFlow({ stageCounts }: CustomerFlowProps) {
                       {config.description}
                     </p>
                   </div>
-                </div>
+                </Link>
                 {i < FLOW_STAGES.length - 1 && (
                   <div className="ml-[18px] h-3 border-l-2 border-dashed border-muted" />
                 )}
@@ -110,10 +117,13 @@ export function CustomerFlow({ stageCounts }: CustomerFlowProps) {
 
         {/* Lost deals callout */}
         {(stageCounts["lost"] || 0) > 0 && (
-          <div className="mt-4 pt-3 border-t flex items-center justify-between text-sm">
+          <Link
+            href="/contacts?stage=lost"
+            className="mt-4 pt-3 border-t flex items-center justify-between text-sm cursor-pointer rounded-lg px-2 py-2 hover:shadow-md transition-shadow"
+          >
             <span className="text-muted-foreground">Lost deals</span>
             <span className="font-bold text-red-600">{stageCounts["lost"]}</span>
-          </div>
+          </Link>
         )}
       </CardContent>
     </Card>
