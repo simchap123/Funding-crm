@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Pencil, Trash2, ShieldCheck, User, KeyRound } from "lucide-react";
-import { deleteUser, updateUser } from "@/lib/actions/auth";
+import { Pencil, Trash2, ShieldCheck, User, KeyRound, RotateCcw, Copy, Check } from "lucide-react";
+import { deleteUser, updateUser, resetUserPassword } from "@/lib/actions/auth";
 import {
   Card,
   CardContent,
@@ -75,6 +75,10 @@ export function UserManagement({
   });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [resetTarget, setResetTarget] = useState<UserRow | null>(null);
+  const [resetting, setResetting] = useState(false);
+  const [resetResult, setResetResult] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   function openEdit(user: UserRow) {
     setEditUser(user);
@@ -126,6 +130,39 @@ export function UserManagement({
     }
   }
 
+  async function handleResetPassword() {
+    if (!resetTarget) return;
+    setResetting(true);
+    try {
+      const result = await resetUserPassword(resetTarget.id);
+      if (result?.error) {
+        toast.error(result.error as string);
+        setResetTarget(null);
+      } else if (result?.newPassword) {
+        setResetResult(result.newPassword);
+      }
+    } catch {
+      toast.error("Failed to reset password");
+      setResetTarget(null);
+    } finally {
+      setResetting(false);
+    }
+  }
+
+  function closeResetDialog() {
+    setResetTarget(null);
+    setResetResult(null);
+    setCopied(false);
+  }
+
+  async function copyPassword() {
+    if (!resetResult) return;
+    await navigator.clipboard.writeText(resetResult);
+    setCopied(true);
+    toast.success("Password copied to clipboard");
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   return (
     <>
       <Card>
@@ -168,6 +205,15 @@ export function UserManagement({
                     onClick={() => openEdit(user)}
                   >
                     <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    title="Reset password"
+                    onClick={() => setResetTarget(user)}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
                   </Button>
                   {user.id !== currentUserId && (
                     <Button
@@ -268,6 +314,45 @@ export function UserManagement({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resetTarget} onOpenChange={(o) => !o && closeResetDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              {resetResult
+                ? `New password generated for ${resetTarget?.name}. Make sure to copy it — it won't be shown again.`
+                : `Generate a new random password for ${resetTarget?.name} (${resetTarget?.email}).`}
+            </DialogDescription>
+          </DialogHeader>
+          {resetResult ? (
+            <div className="space-y-3 py-2">
+              <Label>New Password</Label>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 rounded-md border bg-muted px-3 py-2 font-mono text-sm">
+                  {resetResult}
+                </code>
+                <Button variant="outline" size="icon" onClick={copyPassword} title="Copy password">
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter>
+            {resetResult ? (
+              <Button onClick={closeResetDialog}>Done</Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={closeResetDialog}>Cancel</Button>
+                <Button onClick={handleResetPassword} disabled={resetting}>
+                  {resetting ? "Resetting..." : "Reset Password"}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
