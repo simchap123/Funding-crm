@@ -13,6 +13,9 @@ import {
   Mail,
   X,
   User,
+  CheckSquare,
+  Building2,
+  BadgeCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,7 +26,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 export type FieldPlacement = {
   id?: string;
   tempId?: string;
-  type: "signature" | "date" | "text" | "name" | "email" | "initials";
+  type: "signature" | "date" | "text" | "name" | "email" | "initials" | "checkbox" | "company" | "title";
   page: number;
   xPercent: number;
   yPercent: number;
@@ -45,6 +48,7 @@ interface PdfViewerProps {
   recipientId?: string;
   recipientColors?: Record<string, string>; // recipientId -> color hex
   recipientData?: Record<string, { name: string; email: string }>; // recipientId -> data for previews
+  highlightFieldId?: string; // field to highlight with pulse animation
 }
 
 const FIELD_COLORS: Record<string, string> = {
@@ -54,6 +58,9 @@ const FIELD_COLORS: Record<string, string> = {
   name: "border-purple-500 bg-purple-50/80",
   email: "border-cyan-500 bg-cyan-50/80",
   initials: "border-pink-500 bg-pink-50/80",
+  checkbox: "border-amber-500 bg-amber-50/80",
+  company: "border-indigo-500 bg-indigo-50/80",
+  title: "border-teal-500 bg-teal-50/80",
 };
 
 const FIELD_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -63,6 +70,9 @@ const FIELD_ICONS: Record<string, React.ComponentType<{ className?: string }>> =
   name: User,
   email: Mail,
   initials: Pen,
+  checkbox: CheckSquare,
+  company: Building2,
+  title: BadgeCheck,
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -72,6 +82,9 @@ const FIELD_LABELS: Record<string, string> = {
   name: "Name",
   email: "Email",
   initials: "Initials",
+  checkbox: "Checkbox",
+  company: "Company",
+  title: "Title",
 };
 
 const FIELD_SIZES: Record<string, { w: number; h: number }> = {
@@ -81,6 +94,9 @@ const FIELD_SIZES: Record<string, { w: number; h: number }> = {
   name: { w: 18, h: 4 },
   email: { w: 22, h: 4 },
   initials: { w: 8, h: 5 },
+  checkbox: { w: 5, h: 5 },
+  company: { w: 20, h: 4 },
+  title: { w: 16, h: 4 },
 };
 
 /** Convert a hex color to rgba with given alpha */
