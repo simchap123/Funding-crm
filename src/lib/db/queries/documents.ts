@@ -4,8 +4,9 @@ import {
   documentRecipients,
   documentAttachments,
   documentAuditLog,
+  documentFields,
 } from "@/lib/db/schema";
-import { eq, desc, count } from "drizzle-orm";
+import { eq, and, desc, count } from "drizzle-orm";
 import type { DocumentStatus } from "@/lib/db/schema/documents";
 
 export async function getDocuments({
@@ -88,18 +89,36 @@ export async function getDocumentByToken(accessToken: string) {
     with: {
       document: {
         with: {
-          fields: true,
-          recipients: true,
-          attachments: {
-            with: { fields: true },
-          },
+          attachments: true,
         },
       },
       fields: true,
+      contact: true,
     },
   });
 
-  return recipient;
+  if (!recipient) return null;
+
+  // Build attachments with only this recipient's fields (privacy)
+  const attachmentsWithFields = await Promise.all(
+    (recipient.document.attachments || []).map(async (attachment) => {
+      const fields = await db.query.documentFields.findMany({
+        where: and(
+          eq(documentFields.attachmentId, attachment.id),
+          eq(documentFields.recipientId, recipient.id)
+        ),
+      });
+      return { ...attachment, fields };
+    })
+  );
+
+  return {
+    ...recipient,
+    document: {
+      ...recipient.document,
+      attachments: attachmentsWithFields,
+    },
+  };
 }
 
 export async function getDocumentStats() {
