@@ -1053,6 +1053,17 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
                         </div>
                       </div>
                     )}
+
+                    {/* Save button */}
+                    {hasUnsavedChanges && (
+                      <Button
+                        className="w-full"
+                        onClick={autoSaveFields}
+                        disabled={isSaving}
+                      >
+                        {isSaving ? "Saving..." : `Save ${placedFields.length + dirtyFieldIds.size} Field(s)`}
+                      </Button>
+                    )}
                   </div>
                 )}
 

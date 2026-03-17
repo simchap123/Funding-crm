@@ -163,7 +163,6 @@ export async function addSignatureField(data: {
   heightPercent: number;
   label?: string;
   required?: boolean;
-  sequence?: number;
 }) {
   await verifyDocumentOwner(data.documentId);
 
@@ -213,7 +212,7 @@ export async function addSignatureField(data: {
   }
 
   const id = nanoid();
-  const insertValues: Record<string, unknown> = {
+  await db.insert(documentFields).values({
     id,
     documentId: data.documentId,
     recipientId: data.recipientId,
@@ -226,11 +225,7 @@ export async function addSignatureField(data: {
     heightPercent: data.heightPercent,
     label: data.label || null,
     required: data.required ?? true,
-  };
-  if (data.sequence !== undefined) {
-    insertValues.sequence = data.sequence;
-  }
-  await db.insert(documentFields).values(insertValues as any);
+  });
 
   revalidatePath(`/documents/${data.documentId}`);
   return { success: true, id };

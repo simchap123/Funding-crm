@@ -134,8 +134,6 @@ export const documentFields = sqliteTable("document_fields", {
   yPercent: real("y_percent").notNull(),
   widthPercent: real("width_percent").notNull(),
   heightPercent: real("height_percent").notNull(),
-  // Ordering
-  sequence: integer("sequence"),
   // Filled value
   value: text("value"),
   filledAt: text("filled_at"),
