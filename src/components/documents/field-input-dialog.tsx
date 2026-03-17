@@ -43,11 +43,26 @@ export function FieldInputDialog({
       setTypedSignature("");
       // Pre-fill based on type
       if (field.type === "date") {
-        setTextValue(new Date().toISOString().split("T")[0]);
+        // Readable date format: "March 16, 2026"
+        setTextValue(
+          new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+        );
       } else if (field.type === "name") {
         setTextValue(signerName);
       } else if (field.type === "email") {
         setTextValue(signerEmail);
+      } else if (field.type === "initials") {
+        // Pre-fill initials from signer name: "John Doe" -> "JD"
+        const initials = signerName
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((part) => part[0].toUpperCase())
+          .join("");
+        setTypedSignature(initials);
       }
     }
   }, [open, field, signerName, signerEmail]);
@@ -250,12 +265,21 @@ export function FieldInputDialog({
         ) : (
           <div className="space-y-3">
             <Input
-              type={field.type === "date" ? "date" : field.type === "email" ? "email" : "text"}
+              type={field.type === "email" ? "email" : "text"}
               value={textValue}
               onChange={(e) => setTextValue(e.target.value)}
-              placeholder={`Enter ${field.type}`}
+              placeholder={
+                field.type === "date"
+                  ? "e.g. March 16, 2026"
+                  : `Enter ${field.type}`
+              }
               autoFocus
             />
+            {field.type === "date" && textValue && (
+              <p className="text-xs text-muted-foreground">
+                Date will appear as: <span className="font-medium">{textValue}</span>
+              </p>
+            )}
             <div className="flex justify-end">
               <Button onClick={handleSubmit} disabled={!textValue}>
                 Apply

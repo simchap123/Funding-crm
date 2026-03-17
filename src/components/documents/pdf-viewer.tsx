@@ -42,6 +42,7 @@ interface PdfViewerProps {
   onFieldClick?: (field: FieldPlacement) => void;
   activeFieldType?: FieldPlacement["type"] | null;
   recipientId?: string;
+  highlightFieldId?: string | null;
 }
 
 const FIELD_COLORS: Record<string, string> = {
@@ -79,6 +80,7 @@ export function PdfViewer({
   onFieldClick,
   activeFieldType,
   recipientId,
+  highlightFieldId,
 }: PdfViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -287,16 +289,19 @@ export function PdfViewer({
               const FieldIcon = FIELD_ICONS[field.type] || Type;
               const isFilled = !!field.value || !!field.filledAt;
               const colorClass = FIELD_COLORS[field.type] || "border-gray-500 bg-gray-50/80";
+              const isHighlighted = highlightFieldId && (field.id === highlightFieldId || field.tempId === highlightFieldId);
 
               return (
                 <div
                   key={field.id || field.tempId || idx}
+                  data-field-id={field.id || field.tempId}
                   className={cn(
                     "absolute z-10 border-2 border-dashed rounded flex items-center justify-center transition-colors group",
                     colorClass,
                     isFilled && "border-solid bg-opacity-100",
                     mode === "sign" && !isFilled && "cursor-pointer hover:brightness-95",
-                    mode === "place-fields" && "cursor-move"
+                    mode === "place-fields" && "cursor-move",
+                    isHighlighted && "ring-4 ring-blue-400 ring-offset-2 animate-pulse border-blue-600 z-20"
                   )}
                   style={{
                     left: `${field.xPercent}%`,
