@@ -17,8 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { StageBadge } from "@/components/shared/stage-badge";
+import { STAGE_CONFIG } from "@/lib/constants";
 import {
   markEmailRead,
   markEmailStarred,
@@ -59,6 +58,34 @@ type EmailItem = {
   receivedAt: string | null;
   sentAt: string | null;
 };
+
+/**
+ * Map STAGE_CONFIG bgColor classes (e.g. "bg-blue-100") to a
+ * more saturated dot color for the inline stage indicator.
+ */
+const STAGE_DOT_COLOR: Record<string, string> = {
+  "bg-blue-100": "bg-blue-500",
+  "bg-cyan-100": "bg-cyan-500",
+  "bg-purple-100": "bg-purple-500",
+  "bg-orange-100": "bg-orange-500",
+  "bg-yellow-100": "bg-yellow-500",
+  "bg-emerald-100": "bg-emerald-500",
+  "bg-indigo-100": "bg-indigo-500",
+  "bg-green-100": "bg-green-500",
+  "bg-red-100": "bg-red-500",
+  "bg-gray-100": "bg-gray-400",
+};
+
+function getStageDotColor(stage: string): string | null {
+  const config = STAGE_CONFIG[stage as LeadStage];
+  if (!config) return null;
+  return STAGE_DOT_COLOR[config.bgColor] || "bg-gray-400";
+}
+
+function getStageLabel(stage: string): string {
+  const config = STAGE_CONFIG[stage as LeadStage];
+  return config?.label || stage;
+}
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -183,145 +210,144 @@ export function InboxList({ emails }: { emails: EmailItem[] }) {
         </Card>
       ) : null}
 
-      <div className="border rounded-lg divide-y overflow-hidden bg-card">
-      {filtered.map((email) => {
-        const isInbound = email.direction === "inbound";
-        const displayName = isInbound
-          ? email.fromName || email.fromEmail.split("@")[0]
-          : (() => {
-              try {
-                const to = JSON.parse(email.toEmails);
-                return to[0]?.name || to[0]?.email?.split("@")[0] || "Unknown";
-              } catch {
-                return "Unknown";
-              }
-            })();
+      <div className="border rounded-lg overflow-hidden bg-card">
+        {filtered.map((email) => {
+          const isInbound = email.direction === "inbound";
+          const displayName = isInbound
+            ? email.fromName || email.fromEmail.split("@")[0]
+            : (() => {
+                try {
+                  const to = JSON.parse(email.toEmails);
+                  return to[0]?.name || to[0]?.email?.split("@")[0] || "Unknown";
+                } catch {
+                  return "Unknown";
+                }
+              })();
 
-        const displayEmail = isInbound ? email.fromEmail : (() => {
-          try {
-            const to = JSON.parse(email.toEmails);
-            return to[0]?.email || "";
-          } catch {
-            return "";
-          }
-        })();
+          const date = email.receivedAt || email.sentAt || email.createdAt;
+          const stageDot = email.contact ? getStageDotColor(email.contact.stage) : null;
 
-        const date = email.receivedAt || email.sentAt || email.createdAt;
-
-        return (
-          <Link
-            key={email.id}
-            href={`/inbox/${email.id}`}
-            prefetch={false}
-            className={cn(
-              "group flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors overflow-hidden w-full",
-              !email.isRead && "bg-blue-50/50 dark:bg-blue-950/20"
-            )}
-            onClick={async () => {
-              if (!email.isRead) markEmailRead(email.id);
-            }}
-          >
-            {/* Avatar / Direction */}
-            <div className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-              email.contact
-                ? "bg-primary/10 text-primary"
-                : "bg-muted text-muted-foreground"
-            )}>
-              {isInbound ? (
-                getInitial(displayName)
-              ) : (
-                <ArrowUpRight className="h-3.5 w-3.5 text-green-600" />
+          return (
+            <Link
+              key={email.id}
+              href={`/inbox/${email.id}`}
+              prefetch={false}
+              className={cn(
+                "group relative flex items-start gap-3 py-3 px-4 hover:bg-muted/50 transition-colors border-b last:border-b-0",
+                !email.isRead && "border-l-2 border-l-primary",
+                email.isRead && "border-l-2 border-l-transparent"
               )}
-            </div>
-
-            {/* Star */}
-            <button
-              onClick={(e) => handleStar(e, email.id, email.isStarred)}
-              className="shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+              onClick={async () => {
+                if (!email.isRead) markEmailRead(email.id);
+              }}
             >
-              {email.isStarred ? (
-                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              ) : (
-                <Star className="h-4 w-4 text-muted-foreground/40 hover:text-yellow-400" />
-              )}
-            </button>
-
-            {/* Sender name — fixed width column */}
-            <div className="w-36 shrink-0 truncate">
-              <span className={cn(
-                "text-sm",
-                !email.isRead ? "font-semibold text-foreground" : "text-muted-foreground"
-              )}>
-                {displayName}
-              </span>
-            </div>
-
-            {/* Subject + snippet — fills remaining space */}
-            <div className="flex-1 min-w-0 flex items-center gap-2">
-              {/* Contact badges inline before subject */}
-              {email.contact && (
-                <StageBadge
-                  stage={email.contact.stage as LeadStage}
-                  className="text-[10px] leading-none px-1.5 py-0.5 shrink-0"
-                />
-              )}
-              {email.contact?.contactTags?.slice(0, 2).map(({ tag }) => (
-                <span
-                  key={tag.id}
-                  className="text-[10px] leading-none px-1.5 py-0.5 rounded-full border shrink-0 hidden lg:inline"
-                  style={{ borderColor: tag.color, color: tag.color }}
-                >
-                  {tag.name}
-                </span>
-              ))}
-              <span className={cn(
-                "text-sm truncate",
-                !email.isRead ? "text-foreground" : "text-muted-foreground"
-              )}>
-                {email.subject || "(no subject)"}
-              </span>
-              {email.snippet && (
-                <span className="text-sm text-muted-foreground/60 truncate hidden sm:inline">
-                  — {email.snippet}
-                </span>
-              )}
-            </div>
-
-            {/* Actions — show on hover */}
-            <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-              {!email.contactId && isInbound && (
-                <button
-                  className="p-1.5 rounded hover:bg-muted transition-colors"
-                  title="Add as Contact"
-                  onClick={(e) => handleAddContact(e, email.id)}
-                >
-                  <UserPlus className="h-3.5 w-3.5 text-blue-600" />
-                </button>
-              )}
-              <button
-                className="p-1.5 rounded hover:bg-muted transition-colors"
-                title="Archive"
-                onClick={(e) => handleArchive(e, email.id)}
+              {/* Avatar */}
+              <div
+                className={cn(
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-medium mt-0.5",
+                  email.contact
+                    ? "bg-primary/10 text-primary"
+                    : "bg-muted text-muted-foreground"
+                )}
               >
-                <Archive className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-              <button
-                className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
-                title="Delete"
-                onClick={(e) => handleDelete(e, email.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-              </button>
-            </div>
+                {isInbound ? (
+                  getInitial(displayName)
+                ) : (
+                  <ArrowUpRight className="h-4 w-4 text-green-600" />
+                )}
+              </div>
 
-            {/* Date — fixed width right-aligned */}
-            <span className="text-xs text-muted-foreground shrink-0 w-16 text-right tabular-nums group-hover:hidden">
-              {formatDate(date)}
-            </span>
-          </Link>
-        );
-      })}
+              {/* Content — two rows */}
+              <div className="flex-1 min-w-0">
+                {/* Row 1: Sender + subject + stage dot + date */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={cn(
+                      "shrink-0 text-sm",
+                      !email.isRead
+                        ? "font-semibold text-foreground"
+                        : "font-medium text-foreground/80"
+                    )}
+                  >
+                    {displayName}
+                  </span>
+
+                  {/* Stage dot */}
+                  {stageDot && (
+                    <span
+                      className={cn("h-1.5 w-1.5 shrink-0 rounded-full", stageDot)}
+                      title={getStageLabel(email.contact!.stage)}
+                    />
+                  )}
+
+                  <span
+                    className={cn(
+                      "text-sm truncate min-w-0",
+                      !email.isRead
+                        ? "text-foreground/70"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {email.subject || "(no subject)"}
+                  </span>
+
+                  {/* Spacer pushes date + actions to right */}
+                  <span className="flex-1" />
+
+                  {/* Actions — hover-only */}
+                  <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => handleStar(e, email.id, email.isStarred)}
+                      className="p-1 rounded hover:bg-muted transition-colors"
+                      title={email.isStarred ? "Unstar" : "Star"}
+                    >
+                      {email.isStarred ? (
+                        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                      ) : (
+                        <Star className="h-3.5 w-3.5 text-muted-foreground hover:text-yellow-400" />
+                      )}
+                    </button>
+                    {!email.contactId && isInbound && (
+                      <button
+                        className="p-1 rounded hover:bg-muted transition-colors"
+                        title="Add as Contact"
+                        onClick={(e) => handleAddContact(e, email.id)}
+                      >
+                        <UserPlus className="h-3.5 w-3.5 text-blue-600" />
+                      </button>
+                    )}
+                    <button
+                      className="p-1 rounded hover:bg-muted transition-colors"
+                      title="Archive"
+                      onClick={(e) => handleArchive(e, email.id)}
+                    >
+                      <Archive className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                    <button
+                      className="p-1 rounded hover:bg-destructive/10 transition-colors"
+                      title="Delete"
+                      onClick={(e) => handleDelete(e, email.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </button>
+                  </div>
+
+                  {/* Date — hidden when actions visible */}
+                  <span className="text-xs text-muted-foreground shrink-0 tabular-nums group-hover:hidden">
+                    {formatDate(date)}
+                  </span>
+                </div>
+
+                {/* Row 2: Snippet */}
+                {email.snippet && (
+                  <p className="text-sm text-muted-foreground truncate mt-0.5">
+                    {email.snippet}
+                  </p>
+                )}
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
