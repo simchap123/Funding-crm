@@ -21,10 +21,14 @@ export async function sendEmailViaSMTP(
     throw new Error("SMTP not configured for this account");
   }
 
+  // Port 465 = implicit TLS (secure: true)
+  // Port 587 = STARTTLS (secure: false, upgrades after connect)
+  const isImplicitTLS = account.smtpPort === 465;
+
   const transport = nodemailer.createTransport({
     host: account.smtpHost,
     port: account.smtpPort,
-    secure: account.smtpSecure ?? true,
+    secure: isImplicitTLS,
     auth: {
       user: account.email,
       pass: decrypt(account.password),

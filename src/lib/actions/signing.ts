@@ -1,7 +1,7 @@
 "use server";
 
 import { nanoid } from "nanoid";
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   documentRecipients,
@@ -53,9 +53,13 @@ export async function requestVerificationCode(accessToken: string, email: string
     expiresAt,
   });
 
-  // Send code via email — use the first active email account
+  // Send code via email — use the most recently synced active account without errors
   const account = await db.query.emailAccounts.findFirst({
-    where: eq(emailAccounts.isActive, true),
+    where: and(
+      eq(emailAccounts.isActive, true),
+      isNull(emailAccounts.syncError),
+    ),
+    orderBy: [desc(emailAccounts.lastSyncAt)],
   });
 
   if (!account) {

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { nanoid } from "nanoid";
-import { eq } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   documents,
@@ -262,9 +262,13 @@ export async function sendDocument(documentId: string) {
     }),
   });
 
-  // Send signing invite emails
+  // Send signing invite emails — prefer most recently synced account without errors
   const account = await db.query.emailAccounts.findFirst({
-    where: eq(emailAccounts.isActive, true),
+    where: and(
+      eq(emailAccounts.isActive, true),
+      isNull(emailAccounts.syncError),
+    ),
+    orderBy: [desc(emailAccounts.lastSyncAt)],
   });
 
   if (account) {
