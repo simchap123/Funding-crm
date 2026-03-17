@@ -45,8 +45,13 @@ function LoginForm() {
       if (result?.error) {
         setError(result.error);
       }
-    } catch {
-      // signIn redirects on success, so we only get here on error
+    } catch (err) {
+      // signIn redirects on success (throws NEXT_REDIRECT)
+      // Only show error for non-redirect failures
+      const msg = err instanceof Error ? err.message : "";
+      if (!msg.includes("NEXT_REDIRECT")) {
+        setError("Something went wrong. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
