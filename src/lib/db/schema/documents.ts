@@ -134,6 +134,8 @@ export const documentFields = sqliteTable("document_fields", {
   yPercent: real("y_percent").notNull(),
   widthPercent: real("width_percent").notNull(),
   heightPercent: real("height_percent").notNull(),
+  // Ordering
+  sequence: integer("sequence"),
   // Filled value
   value: text("value"),
   filledAt: text("filled_at"),
@@ -189,6 +191,7 @@ export const documentAuditLog = sqliteTable("document_audit_log", {
       "voided",
       "downloaded",
       "field_filled",
+      "field_deleted",
     ],
   }).notNull(),
   actorEmail: text("actor_email"),

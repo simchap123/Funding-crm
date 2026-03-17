@@ -163,11 +163,29 @@ export async function addSignatureField(data: {
   heightPercent: number;
   label?: string;
   required?: boolean;
+  sequence?: number;
 }) {
   await verifyDocumentOwner(data.documentId);
 
   if (!data.recipientId) {
     return { error: "A recipient must be selected before placing fields" };
+  }
+
+  // Server-side bounds validation
+  if (data.xPercent < 0 || data.xPercent > 100) {
+    return { error: "xPercent must be between 0 and 100" };
+  }
+  if (data.yPercent < 0 || data.yPercent > 100) {
+    return { error: "yPercent must be between 0 and 100" };
+  }
+  if (data.widthPercent < 1 || data.widthPercent > 100) {
+    return { error: "widthPercent must be between 1 and 100" };
+  }
+  if (data.heightPercent < 1 || data.heightPercent > 100) {
+    return { error: "heightPercent must be between 1 and 100" };
+  }
+  if (data.page < 1) {
+    return { error: "page must be at least 1" };
   }
 
   // Verify the recipient exists and belongs to this document
@@ -208,10 +226,93 @@ export async function addSignatureField(data: {
     heightPercent: data.heightPercent,
     label: data.label || null,
     required: data.required ?? true,
+    sequence: data.sequence ?? null,
   });
 
   revalidatePath(`/documents/${data.documentId}`);
   return { success: true, id };
+}
+
+export async function updateSignatureField(data: {
+  fieldId: string;
+  xPercent?: number;
+  yPercent?: number;
+  widthPercent?: number;
+  heightPercent?: number;
+  label?: string;
+  required?: boolean;
+}) {
+  const field = await db.query.documentFields.findFirst({
+    where: eq(documentFields.id, data.fieldId),
+  });
+  if (!field) return { error: "Field not found" };
+
+  const { doc } = await verifyDocumentOwner(field.documentId);
+
+  // Only allow updates on draft or sent documents
+  if (!["draft", "sent"].includes(doc.status)) {
+    return { error: "Cannot update fields on a document that is " + doc.status };
+  }
+
+  // Bounds validation for provided values
+  if (data.xPercent !== undefined && (data.xPercent < 0 || data.xPercent > 100)) {
+    return { error: "xPercent must be between 0 and 100" };
+  }
+  if (data.yPercent !== undefined && (data.yPercent < 0 || data.yPercent > 100)) {
+    return { error: "yPercent must be between 0 and 100" };
+  }
+  if (data.widthPercent !== undefined && (data.widthPercent < 1 || data.widthPercent > 100)) {
+    return { error: "widthPercent must be between 1 and 100" };
+  }
+  if (data.heightPercent !== undefined && (data.heightPercent < 1 || data.heightPercent > 100)) {
+    return { error: "heightPercent must be between 1 and 100" };
+  }
+
+  // Build update object with only provided fields
+  const updates: Record<string, unknown> = {};
+  if (data.xPercent !== undefined) updates.xPercent = data.xPercent;
+  if (data.yPercent !== undefined) updates.yPercent = data.yPercent;
+  if (data.widthPercent !== undefined) updates.widthPercent = data.widthPercent;
+  if (data.heightPercent !== undefined) updates.heightPercent = data.heightPercent;
+  if (data.label !== undefined) updates.label = data.label;
+  if (data.required !== undefined) updates.required = data.required;
+
+  if (Object.keys(updates).length > 0) {
+    await db
+      .update(documentFields)
+      .set(updates)
+      .where(eq(documentFields.id, data.fieldId));
+  }
+
+  revalidatePath(`/documents/${field.documentId}`);
+  return { success: true };
+}
+
+export async function deleteSignatureField(fieldId: string) {
+  const field = await db.query.documentFields.findFirst({
+    where: eq(documentFields.id, fieldId),
+  });
+  if (!field) return { error: "Field not found" };
+
+  const { doc } = await verifyDocumentOwner(field.documentId);
+
+  // Only allow deletion on draft documents
+  if (doc.status !== "draft") {
+    return { error: "Fields can only be deleted on draft documents" };
+  }
+
+  await db.delete(documentFields).where(eq(documentFields.id, fieldId));
+
+  await db.insert(documentAuditLog).values({
+    id: nanoid(),
+    documentId: field.documentId,
+    action: "field_deleted",
+    actorName: "System",
+    metadata: JSON.stringify({ fieldType: field.type, fieldId }),
+  });
+
+  revalidatePath(`/documents/${field.documentId}`);
+  return { success: true };
 }
 
 export async function sendDocument(documentId: string) {
@@ -233,6 +334,25 @@ export async function sendDocument(documentId: string) {
   });
   if (fields.length === 0)
     return { error: "Add at least one field before sending" };
+
+  // Check that at least one signature-type field exists
+  const SIGNATURE_FIELD_TYPES = ["signature", "initials"];
+  const hasSignatureField = fields.some((f) =>
+    SIGNATURE_FIELD_TYPES.includes(f.type)
+  );
+  if (!hasSignatureField)
+    return { error: "At least one signature or initials field is required" };
+
+  // Check that every signer-role recipient has at least one field assigned
+  const signerRecipients = doc.recipients.filter((r) => r.role === "signer");
+  for (const signer of signerRecipients) {
+    const signerFields = fields.filter((f) => f.recipientId === signer.id);
+    if (signerFields.length === 0) {
+      return {
+        error: `Signer "${signer.name}" (${signer.email}) has no fields assigned`,
+      };
+    }
+  }
 
   // Update document status
   await db
@@ -409,6 +529,106 @@ export async function signField(
   }
 
   revalidatePath(`/documents/${field.documentId}`);
+  return { success: true };
+}
+
+export async function signAllFields(
+  accessToken: string,
+  fieldValues: Array<{ fieldId: string; value: string }>
+) {
+  // Verify access token
+  const recipient = await db.query.documentRecipients.findFirst({
+    where: eq(documentRecipients.accessToken, accessToken),
+  });
+  if (!recipient) return { error: "Invalid access token" };
+
+  if (fieldValues.length === 0) return { error: "No field values provided" };
+
+  // Get all fields for this recipient
+  const recipientFields = await db.query.documentFields.findMany({
+    where: eq(documentFields.recipientId, recipient.id),
+  });
+  const recipientFieldIds = new Set(recipientFields.map((f) => f.id));
+
+  // Verify all provided fields belong to this recipient
+  for (const fv of fieldValues) {
+    if (!recipientFieldIds.has(fv.fieldId)) {
+      return { error: `Field ${fv.fieldId} is not assigned to you` };
+    }
+  }
+
+  // Update all fields in batch
+  const now = new Date().toISOString();
+  for (const fv of fieldValues) {
+    await db
+      .update(documentFields)
+      .set({ value: fv.value, filledAt: now })
+      .where(eq(documentFields.id, fv.fieldId));
+  }
+
+  // Re-fetch to check completion
+  const updatedFields = await db.query.documentFields.findMany({
+    where: eq(documentFields.recipientId, recipient.id),
+  });
+  const allRequiredFilled = updatedFields
+    .filter((f) => f.required)
+    .every((f) => f.value);
+
+  if (allRequiredFilled) {
+    // Mark recipient as signed
+    await db
+      .update(documentRecipients)
+      .set({ status: "signed", signedAt: now })
+      .where(eq(documentRecipients.id, recipient.id));
+
+    // Check if all signers have signed
+    const doc = await db.query.documents.findFirst({
+      where: eq(documents.id, recipient.documentId),
+      with: { recipients: true },
+    });
+
+    if (doc) {
+      const allSigners = doc.recipients.filter((r) => r.role === "signer");
+      const allSigned = allSigners.every(
+        (r) => r.status === "signed" || r.id === recipient.id
+      );
+
+      if (allSigned) {
+        await db
+          .update(documents)
+          .set({
+            status: "completed",
+            completedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(documents.id, recipient.documentId));
+
+        await db.insert(documentAuditLog).values({
+          id: nanoid(),
+          documentId: recipient.documentId,
+          action: "completed",
+          actorEmail: recipient.email,
+          actorName: recipient.name,
+        });
+      } else {
+        await db
+          .update(documents)
+          .set({ status: "partially_signed", updatedAt: now })
+          .where(eq(documents.id, recipient.documentId));
+      }
+    }
+
+    await db.insert(documentAuditLog).values({
+      id: nanoid(),
+      documentId: recipient.documentId,
+      action: "signed",
+      actorEmail: recipient.email,
+      actorName: recipient.name,
+      metadata: JSON.stringify({ fieldCount: fieldValues.length, bulk: true }),
+    });
+  }
+
+  revalidatePath(`/documents/${recipient.documentId}`);
   return { success: true };
 }
 
