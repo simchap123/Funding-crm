@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import {
@@ -21,6 +22,7 @@ import {
   Calendar,
   Type,
   Mail,
+  ExternalLink,
 } from "lucide-react";
 import {
   Card,
@@ -71,6 +73,7 @@ import {
 import type { DocumentStatus, DocumentFieldType } from "@/lib/db/schema/documents";
 import type { FieldPlacement } from "./pdf-viewer";
 import { convertDocxToPdfBase64, isConvertibleToDoc } from "@/lib/convert-to-pdf";
+import { getContactsForSelect } from "@/lib/actions/contacts";
 
 // Dynamic import with SSR disabled — react-pdf/pdfjs-dist crashes in Node workers
 const PdfViewer = dynamic(
@@ -110,6 +113,13 @@ type AuditEntry = {
   createdAt: string;
 };
 
+type ContactOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+};
+
 type DocumentType = {
   id: string;
   title: string;
@@ -120,6 +130,8 @@ type DocumentType = {
   completedAt: string | null;
   createdAt: string;
   message: string | null;
+  contactId: string | null;
+  loanId: string | null;
   recipients: RecipientType[];
   attachments: AttachmentType[];
   auditLog: AuditEntry[];
@@ -149,6 +161,27 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState("signer");
+  const [contactOptions, setContactOptions] = useState<ContactOption[]>([]);
+  const [contactsLoaded, setContactsLoaded] = useState(false);
+
+  // Fetch contacts when the add-recipient dialog opens
+  useEffect(() => {
+    if (addOpen && !contactsLoaded) {
+      getContactsForSelect().then((contacts) => {
+        setContactOptions(contacts as ContactOption[]);
+        setContactsLoaded(true);
+      });
+    }
+  }, [addOpen, contactsLoaded]);
+
+  const handleContactSelect = (contactId: string) => {
+    if (!contactId) return;
+    const contact = contactOptions.find((c) => c.id === contactId);
+    if (contact) {
+      setNewName(`${contact.firstName} ${contact.lastName}`);
+      setNewEmail(contact.email || "");
+    }
+  };
 
   // PDF & field state
   const [activeAttachment, setActiveAttachment] = useState<AttachmentType | null>(
@@ -472,9 +505,35 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
             {doc.contact && (
               <div>
                 <p className="text-muted-foreground">Contact</p>
-                <p className="font-medium">
-                  {doc.contact.firstName} {doc.contact.lastName}
-                </p>
+                {doc.contactId ? (
+                  <Link
+                    href={`/contacts/${doc.contactId}`}
+                    className="font-medium text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    {doc.contact.firstName} {doc.contact.lastName}
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                ) : (
+                  <p className="font-medium">
+                    {doc.contact.firstName} {doc.contact.lastName}
+                  </p>
+                )}
+              </div>
+            )}
+            {doc.loan && (
+              <div>
+                <p className="text-muted-foreground">Loan</p>
+                {doc.loanId ? (
+                  <Link
+                    href={`/loans/${doc.loanId}`}
+                    className="font-medium text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    {doc.loan.loanType}
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                ) : (
+                  <p className="font-medium">{doc.loan.loanType}</p>
+                )}
               </div>
             )}
           </div>
@@ -498,6 +557,24 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
                   <DialogTitle>Add Recipient</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
+                  {contactOptions.length > 0 && (
+                    <div>
+                      <Label>Pick from contacts</Label>
+                      <Select onValueChange={handleContactSelect}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a contact..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {contactOptions.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.firstName} {c.lastName}
+                              {c.email ? ` (${c.email})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div>
                     <Label>Name</Label>
                     <Input

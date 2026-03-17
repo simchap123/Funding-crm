@@ -157,6 +157,22 @@ export async function updateContactStage(id: string, stage: LeadStage) {
   return { success: true };
 }
 
+export async function getContactsForSelect() {
+  await getCurrentUserId();
+
+  const allContacts = await db.query.contacts.findMany({
+    columns: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+    },
+    orderBy: (contacts, { asc }) => [asc(contacts.firstName), asc(contacts.lastName)],
+  });
+
+  return allContacts;
+}
+
 export async function assignContactTags(
   contactId: string,
   tagIds: string[]
