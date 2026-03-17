@@ -213,7 +213,7 @@ export async function addSignatureField(data: {
   }
 
   const id = nanoid();
-  await db.insert(documentFields).values({
+  const insertValues: Record<string, unknown> = {
     id,
     documentId: data.documentId,
     recipientId: data.recipientId,
@@ -226,8 +226,11 @@ export async function addSignatureField(data: {
     heightPercent: data.heightPercent,
     label: data.label || null,
     required: data.required ?? true,
-    sequence: data.sequence ?? null,
-  });
+  };
+  if (data.sequence !== undefined) {
+    insertValues.sequence = data.sequence;
+  }
+  await db.insert(documentFields).values(insertValues as any);
 
   revalidatePath(`/documents/${data.documentId}`);
   return { success: true, id };

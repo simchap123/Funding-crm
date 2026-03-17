@@ -221,6 +221,7 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
   );
   // Track dirty (modified) saved field IDs for auto-save
   const [dirtyFieldIds, setDirtyFieldIds] = useState<Set<string>>(new Set());
+  const [deletingFieldIds, setDeletingFieldIds] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
 
   // Signing state (owner self-sign)
@@ -441,8 +442,9 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
         return;
       }
       toast.success("Document sent for signing!");
-    } catch {
-      toast.error("Failed to send document. Please try again.");
+    } catch (err) {
+      console.error("[CRM] Send document error:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to send document. Please try again.");
     }
   };
 
@@ -1073,11 +1075,13 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
                         // Separate existing (have id) from new (have tempId)
                         const newFields: FieldPlacement[] = [];
                         const updatedDirtyIds = new Set(dirtyFieldIds);
+                        const incomingIds = new Set<string>();
 
                         for (const f of fields) {
                           if (f.tempId) {
                             newFields.push(f);
                           } else if (f.id) {
+                            incomingIds.add(f.id);
                             // Check if this existing field was moved/resized
                             const original = existingFields.find((ef) => ef.id === f.id);
                             if (
@@ -1089,6 +1093,26 @@ export function DocumentDetail({ document: doc }: { document: DocumentType }) {
                             ) {
                               updatedDirtyIds.add(f.id);
                             }
+                          }
+                        }
+
+                        // Detect deleted saved fields (were in existingFields but not in incoming)
+                        for (const ef of existingFields) {
+                          if (ef.id && !incomingIds.has(ef.id) && !deletingFieldIds.has(ef.id)) {
+                            // Field was removed via X button — delete from DB
+                            setDeletingFieldIds((prev) => new Set(prev).add(ef.id!));
+                            deleteSignatureField(ef.id).then((result) => {
+                              if ("error" in result && result.error) {
+                                toast.error(result.error as string);
+                              } else {
+                                toast.success("Field deleted");
+                              }
+                              setDeletingFieldIds((prev) => {
+                                const next = new Set(prev);
+                                next.delete(ef.id!);
+                                return next;
+                              });
+                            });
                           }
                         }
 
