@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useRef, useState } from "react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import {
@@ -10,15 +11,22 @@ import {
   StarOff,
   ArrowDownLeft,
   ArrowUpRight,
+  Reply,
+  Paperclip,
+  FileText,
+  FileImage,
+  FileArchive,
+  File,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { ComposeEmail } from "@/components/emails/compose-email";
 import {
   markEmailStarred,
   archiveEmail,
   deleteEmail,
 } from "@/lib/actions/emails";
+import type { EmailAccount, EmailAttachment } from "@/lib/types";
 
 type EmailDetailProps = {
   email: {
@@ -35,12 +43,34 @@ type EmailDetailProps = {
     receivedAt: string | null;
     sentAt: string | null;
     createdAt: string;
+    messageId: string | null;
+    attachments?: EmailAttachment[];
   };
+  accounts: EmailAccount[];
 };
 
-export function EmailDetail({ email }: EmailDetailProps) {
+function formatFileSize(bytes: number | null): string {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getFileIcon(mimeType: string | null) {
+  if (!mimeType) return File;
+  if (mimeType.startsWith("image/")) return FileImage;
+  if (mimeType.includes("pdf") || mimeType.includes("document"))
+    return FileText;
+  if (mimeType.includes("zip") || mimeType.includes("archive"))
+    return FileArchive;
+  return File;
+}
+
+export function EmailDetail({ email, accounts }: EmailDetailProps) {
   const router = useRouter();
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const isInbound = email.direction === "inbound";
+  const [replyOpen, setReplyOpen] = useState(false);
 
   const toList = (() => {
     try {
@@ -58,6 +88,17 @@ export function EmailDetail({ email }: EmailDetailProps) {
       return [];
     }
   })();
+
+  // Determine reply-to address: if inbound, reply to sender; if outbound, reply to first recipient
+  const replyToAddress = isInbound
+    ? email.fromEmail
+    : toList[0]?.email || "";
+
+  const replySubject = email.subject
+    ? email.subject.startsWith("Re: ")
+      ? email.subject
+      : `Re: ${email.subject}`
+    : "Re: (no subject)";
 
   const handleStar = async () => {
     await markEmailStarred(email.id, !email.isStarred);
@@ -80,7 +121,33 @@ export function EmailDetail({ email }: EmailDetailProps) {
     }
   };
 
+  // Auto-resize iframe to match content height
+  const handleIframeLoad = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (doc?.body) {
+        const resizeToContent = () => {
+          const height = doc.documentElement.scrollHeight || doc.body.scrollHeight;
+          iframe.style.height = `${Math.max(height + 16, 120)}px`;
+        };
+        resizeToContent();
+        // Re-check after images load
+        const images = doc.querySelectorAll("img");
+        images.forEach((img) => {
+          if (!img.complete) {
+            img.addEventListener("load", resizeToContent);
+          }
+        });
+      }
+    } catch {
+      // Cross-origin fallback — keep default height
+    }
+  }, []);
+
   const date = email.receivedAt || email.sentAt || email.createdAt;
+  const attachments = email.attachments || [];
 
   return (
     <div className="space-y-4">
@@ -101,6 +168,26 @@ export function EmailDetail({ email }: EmailDetailProps) {
         </div>
 
         <div className="flex items-center gap-1">
+          {accounts.length > 0 && (
+            <ComposeEmail
+              accounts={accounts}
+              replyTo={replyToAddress}
+              replySubject={replySubject}
+              replyInReplyTo={email.messageId || undefined}
+              defaultOpen={replyOpen}
+              onOpenChange={setReplyOpen}
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setReplyOpen(true)}
+              >
+                <Reply className="h-4 w-4" />
+                Reply
+              </Button>
+            </ComposeEmail>
+          )}
           <Button variant="ghost" size="icon" onClick={handleStar}>
             {email.isStarred ? (
               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -159,10 +246,47 @@ export function EmailDetail({ email }: EmailDetailProps) {
         </div>
       </div>
 
+      {/* Attachments */}
+      {attachments.length > 0 && (
+        <div className="border rounded-lg p-3">
+          <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground mb-2">
+            <Paperclip className="h-3.5 w-3.5" />
+            {attachments.length} attachment{attachments.length !== 1 ? "s" : ""}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {attachments.map((attachment) => {
+              const Icon = getFileIcon(attachment.mimeType);
+              const size = formatFileSize(attachment.fileSize);
+              return (
+                <a
+                  key={attachment.id}
+                  href={attachment.fileUrl || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm transition-colors hover:bg-muted/70"
+                >
+                  <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate max-w-[180px]">
+                    {attachment.fileName}
+                  </span>
+                  {size && (
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {size}
+                    </span>
+                  )}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Body */}
       <div className="border rounded-lg overflow-hidden">
         {email.bodyHtml ? (
           <iframe
+            ref={iframeRef}
+            onLoad={handleIframeLoad}
             srcDoc={`
               <!DOCTYPE html>
               <html>
@@ -178,7 +302,8 @@ export function EmailDetail({ email }: EmailDetailProps) {
               </html>
             `}
             sandbox="allow-same-origin"
-            className="w-full min-h-[300px] border-0"
+            className="w-full border-0"
+            style={{ height: "120px" }}
             title="Email content"
           />
         ) : (
