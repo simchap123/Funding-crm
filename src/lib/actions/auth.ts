@@ -167,6 +167,39 @@ export async function updateUser(
   return { success: true };
 }
 
+export async function resetUserPassword(userId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Not authenticated" };
+
+  const currentUser = await db.query.users.findFirst({
+    where: eq(users.id, session.user.id),
+  });
+  if (!currentUser || currentUser.role !== "admin") {
+    return { error: "Only admins can reset passwords" };
+  }
+
+  const target = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+  if (!target) return { error: "User not found" };
+
+  // Generate random 8-character password
+  const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let newPassword = "";
+  for (let i = 0; i < 8; i++) {
+    newPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  const passwordHash = await hash(newPassword, 12);
+  await db
+    .update(users)
+    .set({ passwordHash, updatedAt: new Date().toISOString() })
+    .where(eq(users.id, userId));
+
+  revalidatePath("/settings/account");
+  return { success: true, newPassword };
+}
+
 export async function loginUser(formData: {
   email: string;
   password: string;
