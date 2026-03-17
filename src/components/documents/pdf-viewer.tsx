@@ -12,6 +12,9 @@ import {
   Type,
   Mail,
   Trash2,
+  CheckSquare,
+  Building2,
+  BadgeCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -22,7 +25,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 export type FieldPlacement = {
   id?: string;
   tempId?: string;
-  type: "signature" | "date" | "text" | "name" | "email" | "initials";
+  type: "signature" | "date" | "text" | "name" | "email" | "initials" | "checkbox" | "company" | "title";
   page: number;
   xPercent: number;
   yPercent: number;
@@ -42,6 +45,8 @@ interface PdfViewerProps {
   onFieldClick?: (field: FieldPlacement) => void;
   activeFieldType?: FieldPlacement["type"] | null;
   recipientId?: string;
+  recipientColors?: Record<string, string>;
+  recipientData?: Record<string, { name: string; email: string }>;
 }
 
 const FIELD_COLORS: Record<string, string> = {
@@ -51,6 +56,9 @@ const FIELD_COLORS: Record<string, string> = {
   name: "border-purple-500 bg-purple-50/80",
   email: "border-cyan-500 bg-cyan-50/80",
   initials: "border-pink-500 bg-pink-50/80",
+  checkbox: "border-amber-500 bg-amber-50/80",
+  company: "border-indigo-500 bg-indigo-50/80",
+  title: "border-teal-500 bg-teal-50/80",
 };
 
 const FIELD_ICONS: Record<string, any> = {
@@ -60,6 +68,9 @@ const FIELD_ICONS: Record<string, any> = {
   name: Type,
   email: Mail,
   initials: Pen,
+  checkbox: CheckSquare,
+  company: Building2,
+  title: BadgeCheck,
 };
 
 const FIELD_SIZES: Record<string, { w: number; h: number }> = {
@@ -69,6 +80,9 @@ const FIELD_SIZES: Record<string, { w: number; h: number }> = {
   name: { w: 18, h: 4 },
   email: { w: 22, h: 4 },
   initials: { w: 8, h: 5 },
+  checkbox: { w: 5, h: 5 },
+  company: { w: 20, h: 4 },
+  title: { w: 16, h: 4 },
 };
 
 export function PdfViewer({
@@ -79,6 +93,8 @@ export function PdfViewer({
   onFieldClick,
   activeFieldType,
   recipientId,
+  recipientColors,
+  recipientData,
 }: PdfViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(1);

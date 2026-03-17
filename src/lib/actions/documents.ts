@@ -508,3 +508,60 @@ export async function removeRecipient(recipientId: string) {
   revalidatePath(`/documents/${recipient.documentId}`);
   return { success: true };
 }
+
+export async function updateSignatureField(data: {
+  fieldId: string;
+  xPercent?: number;
+  yPercent?: number;
+  widthPercent?: number;
+  heightPercent?: number;
+}) {
+  const userId = await getCurrentUserId();
+
+  const field = await db.query.documentFields.findFirst({
+    where: eq(documentFields.id, data.fieldId),
+  });
+  if (!field) return { error: "Field not found" };
+
+  // Verify ownership through document chain
+  const doc = await db.query.documents.findFirst({
+    where: eq(documents.id, field.documentId),
+  });
+  if (!doc || doc.ownerId !== userId) return { error: "Access denied" };
+
+  const updates: Record<string, number> = {};
+  if (data.xPercent !== undefined) updates.xPercent = data.xPercent;
+  if (data.yPercent !== undefined) updates.yPercent = data.yPercent;
+  if (data.widthPercent !== undefined) updates.widthPercent = data.widthPercent;
+  if (data.heightPercent !== undefined) updates.heightPercent = data.heightPercent;
+
+  if (Object.keys(updates).length > 0) {
+    await db
+      .update(documentFields)
+      .set(updates)
+      .where(eq(documentFields.id, data.fieldId));
+  }
+
+  revalidatePath(`/documents/${field.documentId}`);
+  return { success: true };
+}
+
+export async function deleteSignatureField(fieldId: string) {
+  const userId = await getCurrentUserId();
+
+  const field = await db.query.documentFields.findFirst({
+    where: eq(documentFields.id, fieldId),
+  });
+  if (!field) return { error: "Field not found" };
+
+  // Verify ownership through document chain
+  const doc = await db.query.documents.findFirst({
+    where: eq(documents.id, field.documentId),
+  });
+  if (!doc || doc.ownerId !== userId) return { error: "Access denied" };
+
+  await db.delete(documentFields).where(eq(documentFields.id, fieldId));
+
+  revalidatePath(`/documents/${field.documentId}`);
+  return { success: true };
+}
