@@ -40,6 +40,13 @@ type AttachmentData = {
   fields: Field[];
 };
 
+type ContactData = {
+  name?: string;
+  email?: string;
+  company?: string;
+  title?: string;
+};
+
 type RecipientData = {
   id: string;
   name: string;
@@ -57,7 +64,13 @@ type RecipientData = {
   fields: Field[];
 };
 
-export function SigningPage({ data }: { data: RecipientData }) {
+export function SigningPage({
+  data,
+  contactData,
+}: {
+  data: RecipientData;
+  contactData?: ContactData;
+}) {
   const [verificationStep, setVerificationStep] = useState<"email" | "code" | "verified">("email");
   const [emailInput, setEmailInput] = useState("");
   const [codeInput, setCodeInput] = useState("");
@@ -87,13 +100,8 @@ export function SigningPage({ data }: { data: RecipientData }) {
     (a) => a.mimeType === "application/pdf" && a.fileData
   );
 
-  // Build fields for the PDF viewer — show ALL fields on the document
-  // (so recipient can see where others need to sign too) but only
-  // allow interaction with fields assigned to this recipient
-  const allDocumentFields: Field[] = pdfAttachment?.fields || [];
-  const myFieldIds = new Set(data.fields.map((f) => f.id));
-
-  const pdfFields: FieldPlacement[] = allDocumentFields.map((f) => ({
+  // Build fields for the PDF viewer — only this recipient's fields
+  const pdfFields: FieldPlacement[] = data.fields.map((f) => ({
     id: f.id,
     type: f.type as FieldPlacement["type"],
     page: f.page,
@@ -104,7 +112,7 @@ export function SigningPage({ data }: { data: RecipientData }) {
     label: f.label || undefined,
     value: fieldValues[f.id] || f.value,
     filledAt: f.filledAt,
-    recipientId: myFieldIds.has(f.id) ? data.id : undefined,
+    recipientId: data.id,
   }));
 
   const pendingFields = data.fields.filter(
@@ -113,8 +121,6 @@ export function SigningPage({ data }: { data: RecipientData }) {
 
   const handleFieldClick = (field: FieldPlacement) => {
     if (field.filledAt || fieldValues[field.id || ""]) return;
-    // Only allow signing fields assigned to this recipient
-    if (!myFieldIds.has(field.id || "")) return;
     setSigningField(field);
   };
 
@@ -145,9 +151,13 @@ export function SigningPage({ data }: { data: RecipientData }) {
         if (field.type === "date") {
           value = new Date().toISOString().split("T")[0];
         } else if (field.type === "name") {
-          value = data.name;
+          value = contactData?.name || data.name;
         } else if (field.type === "email") {
-          value = data.email;
+          value = contactData?.email || data.email;
+        } else if (field.type === "company") {
+          value = contactData?.company || "";
+        } else if (field.type === "title") {
+          value = contactData?.title || "";
         }
 
         if (value) {
@@ -378,8 +388,8 @@ export function SigningPage({ data }: { data: RecipientData }) {
         open={!!signingField}
         onOpenChange={(open) => !open && setSigningField(null)}
         field={signingField}
-        signerName={data.name}
-        signerEmail={data.email}
+        signerName={contactData?.name || data.name}
+        signerEmail={contactData?.email || data.email}
         onSubmit={handleFieldSubmit}
       />
     </div>
