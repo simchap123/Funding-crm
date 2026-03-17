@@ -48,7 +48,7 @@ interface PdfViewerProps {
   recipientId?: string;
   recipientColors?: Record<string, string>; // recipientId -> color hex
   recipientData?: Record<string, { name: string; email: string }>; // recipientId -> data for previews
-  highlightFieldId?: string; // field to highlight with pulse animation
+  highlightFieldId?: string | null; // field to highlight with pulse animation
 }
 
 const FIELD_COLORS: Record<string, string> = {
@@ -141,6 +141,7 @@ export function PdfViewer({
   recipientId,
   recipientColors,
   recipientData,
+  highlightFieldId,
 }: PdfViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -495,17 +496,20 @@ export function PdfViewer({
               const previewText = !isFilled && mode === "place-fields" ? getPreviewText(field) : null;
               const recipientName = mode === "place-fields" ? getRecipientName(field) : null;
               const isBeingResized = dragState?.type === "resize" && dragState.fieldIndex === fields.indexOf(field);
+              const isHighlighted = highlightFieldId && (field.id === highlightFieldId || field.tempId === highlightFieldId);
 
               return (
                 <div
                   key={fieldKey}
+                  data-field-id={field.id || field.tempId}
                   className={cn(
                     "absolute z-10 border-2 border-dashed rounded flex flex-col items-center justify-center transition-colors group overflow-hidden",
                     colorClass,
                     isFilled && "border-solid bg-opacity-100",
                     isOverlapping && "ring-2 ring-red-500 ring-offset-1",
                     mode === "sign" && !isFilled && "cursor-pointer hover:brightness-95",
-                    mode === "place-fields" && "cursor-move"
+                    mode === "place-fields" && "cursor-move",
+                    isHighlighted && "ring-4 ring-blue-400 ring-offset-2 animate-pulse border-blue-600 z-20"
                   )}
                   style={{
                     left: `${field.xPercent}%`,
